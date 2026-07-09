@@ -1,0 +1,232 @@
+/* ═════════════════════════════════════════════════════════════════
+   03_css_selectors / style.css
+   对照 index.html 中的示例逐一说明每个选择器
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── 全局 ──────────────────────────────────────── */
+body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.8;
+    color: #333;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   1. 基础选择器
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 类型选择器：直接用标签名 ──────────────────── */
+blockquote {
+    border-left: 4px solid #4a90d9;
+    padding: 10px 20px;
+    margin: 15px 0;
+    background: #f0f7ff;
+    font-style: italic;
+}
+
+/* ── class 选择器：.classname ────────────────────
+   ⚠️ 一个元素可以有多个 class（空格分隔），这是 CSS 最常用的选择器 */
+.highlight {
+    background: #fff9c4;
+    padding: 5px 10px;
+}
+
+/* ── 多 class 选择器：多个 .class 连写（无空格！） ─
+   选中的是 同时 拥有这两个 class 的元素 */
+.highlight.important {
+    border-left: 4px solid #e74c3c;
+    font-weight: bold;
+}
+
+/* ── id 选择器：#id ──────────────────────────────
+   ⚠️ id 在页面中必须唯一；特指度 (0,1,0,0) 太高，尽量少用 */
+#unique {
+    background: #e8f5e9;
+    border: 2px solid #4caf50;
+    padding: 5px 10px;
+}
+
+/* ── 属性选择器：[attr=value] ───────────────────── */
+input[type="text"] {
+    border-color: #4a90d9;
+}
+input[type="email"] {
+    border-color: #e67e22;
+}
+
+/* [href^="https"] = href 以 https 开头 */
+a[href^="https"]::after {
+    content: " 🔗";     /* 给外部链接加个标记 */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. 组合器
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 后代选择器：空格 " " —— 选所有后代（不限层级） ─ */
+.ancestor p {
+    border: 1px dashed #999;
+    padding: 4px 8px;
+}
+
+/* ── 子代选择器：> —— 只选直接子元素 ──────────── */
+.parent > li {
+    border: 2px solid #4caf50;
+    margin: 5px 0;
+    padding: 4px 8px;
+    list-style: none;
+}
+
+/* ── 相邻兄弟：+ —— 紧跟在后面的第一个兄弟 ──────── */
+h4 + p {
+    border-left: 3px solid #e74c3c;
+    padding-left: 10px;
+}
+
+/* ── 通用兄弟：~ —— 后面的所有兄弟 ────────────── */
+h4 ~ p {
+    color: #888;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. 伪类与伪元素
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 伪类：状态 ────────────────────────────────── */
+.pseudo-class-demo li:hover {
+    background: #e3f2fd;
+    cursor: pointer;
+}
+.pseudo-class-demo li:first-child {
+    color: #4a90d9;
+    font-weight: bold;
+}
+.pseudo-class-demo li:last-child {
+    color: #e74c3c;
+}
+
+input:focus {
+    outline: 3px solid rgba(74, 144, 217, 0.3);
+}
+
+input:checked + span {
+    color: #4caf50;
+}
+
+/* ── 斑马纹：:nth-child(odd/even/公式) ────────────
+   这是最实用的伪类之一，不需要 JS 就能做交替样式 */
+.zebra tbody tr:nth-child(odd) {
+    background: #f5f5f5;
+}
+.zebra tbody tr:nth-child(even) {
+    background: #fff;
+}
+.zebra tbody tr:hover {
+    background: #e3f2fd;    /* 悬停高亮 */
+}
+
+/* ── 伪元素：创建虚拟元素 ────────────────────────
+   ⚠️ content 属性是必须的，没有它伪元素不会显示 */
+.with-before::before {
+    content: "「前置」 ";
+    color: #4a90d9;
+    font-weight: bold;
+}
+.with-after::after {
+    content: " 「后置」";
+    color: #e74c3c;
+}
+
+.first-line-demo::first-line {
+    font-weight: bold;
+    color: #2196f3;
+}
+
+::selection {
+    background: #ffeb3b;
+    color: #333;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. 特指度演示
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 特指度：0,0,1,0 */
+.box {
+    width: 100%;
+    padding: 20px;
+    margin: 15px 0;
+    background: #ddd;
+    color: #333;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* 特指度：0,1,0,0 —— 覆盖 .box 的背景色 */
+#my-box {
+    background: #c8e6c9;    /* 绿色胜出！ */
+}
+
+/* 特指度：0,0,1,1 —— 比 .box 高但比 #my-box 低 */
+div.box {
+    border: 2px solid #999;
+}
+
+/* 特指度：0,0,1,0 + !important —— "核武器" */
+.red-box {
+    /* 背景变红，无视一切优先级（包括内联样式和 id） */
+}
+
+/* 通用样式 */
+article {
+    margin-bottom: 40px;
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 8px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 14px;
+}
+th {
+    background: #4a90d9;
+    color: white;
+}
+code {
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "Consolas", monospace;
+}
+
+input {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    margin: 5px;
+}
+
+header {
+    border-bottom: 3px solid #4a90d9;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+}
+
+footer {
+    margin-top: 40px;
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}

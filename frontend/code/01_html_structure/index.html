@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 01_html_structure —— HTML 结构与语义化
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. DOCTYPE 是什么、为什么只需要写 <!DOCTYPE html>
+  2. <head> 里的关键标签：meta、title、link、script 的位置
+  3. 块级元素 vs 行内元素 —— 布局的第一性原理
+  4. 语义化标签：header/nav/main/section/article/aside/footer
+  5. SEO 与可访问性（a11y）的基本意识
+
+【运行】浏览器直接打开此文件即可
+
+【Java 程序员的视角】
+  HTML 就是"用标签描述文档结构"的语言，类似 XML 但更宽松。
+  语义化标签 = 给 div 起有意义的名字，区别在于搜索引擎和屏幕阅读器也能理解。
+-->
+<html lang="zh-CN">
+<head>
+    <!-- ── 字符编码：必须放在 head 最前面 ────────────── -->
+    <meta charset="UTF-8">
+
+    <!-- ── Viewport：移动端适配的基石（下一课详细讲）──── -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- ── SEO 相关 meta ─────────────────────────────── -->
+    <meta name="description" content="HTML 结构学习示例">
+    <meta name="keywords" content="HTML, 语义化, 前端入门">
+
+    <!-- ── 页面标题：显示在浏览器标签页上 ─────────────── -->
+    <title>01 - HTML 结构与语义化</title>
+
+    <!-- ── 外部 CSS：用 link 引入 ────────────────────────
+         rel="stylesheet" 告诉浏览器这是一个样式表
+         放在 head 中加载可以避免"无样式内容闪烁"(FOUC)  -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ── ⚠️ script 不要放在 head 顶部 ─────────────────
+         如果 script 放在 head 且没有 defer/async，
+         浏览器会停下来下载+执行脚本，阻塞 DOM 解析！
+         最佳实践：script 放在 body 末尾，或用 defer。   -->
+</head>
+<body>
+    <!--
+    ══════════════════════════════════════════════════════════════
+    页面结构：用一个实际的文章布局展示语义标签
+    ══════════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── 页头：通常包含 logo、导航 ──────────────────── -->
+    <header>
+        <h1>📖 前端学习笔记</h1>
+        <!-- nav 标记导航区域：屏幕阅读器可以跳过导航直接读内容 -->
+        <nav>
+            <a href="#">首页</a> |
+            <a href="#">HTML</a> |
+            <a href="#">CSS</a> |
+            <a href="#">JavaScript</a>
+        </nav>
+    </header>
+
+    <!-- ── 主体内容区域 ──────────────────────────────── -->
+    <main>
+        <!-- article：独立的、可分发的内容单元（如一篇博客、新闻） -->
+        <article>
+            <h2>块级元素 vs 行内元素</h2>
+            <p>发布时间：<time datetime="2026-07-09">2026年7月9日</time></p>
+
+            <!-- section：文档中的一个章节，通常带标题 -->
+            <section>
+                <h3>块级元素（Block）</h3>
+                <!--
+                块级元素的特点：
+                - 独占一行（自动换行）
+                - 默认宽度 = 父容器 100%
+                - 可以设置 width / height / margin / padding
+                - 常见：div, p, h1~h6, ul, li, section, article, header, footer
+                -->
+                <div class="demo-block">我是 div（块级元素）</div>
+                <p style="border: 1px solid #999;">我是 p（块级元素）</p>
+                <ul>
+                    <li>li 也是块级元素</li>
+                    <li>每个 li 独占一行</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>行内元素（Inline）</h3>
+                <!--
+                行内元素的特点：
+                - 不换行，和其他行内元素挤在一行
+                - 默认宽高由内容决定（width/height 无效）
+                - margin/padding 只有左右生效（上下不影响布局）
+                - 常见：span, a, strong, em, code, img(特殊，行内替换元素)
+                -->
+                <p>
+                    这是一段文字，里面有
+                    <span style="background: yellow;">span 行内元素</span>，
+                    还有<strong>粗体强调（strong）</strong>，
+                    以及<em>斜体强调（em）</em>，
+                    最后是<a href="#">一个链接（a）</a>。
+                    它们都在同一行。
+                </p>
+            </section>
+
+            <section>
+                <h3>行内块元素（Inline-Block）—— 集大成者</h3>
+                <!--
+                inline-block = 行内排列 + 块级属性控制（宽高、上下 margin）
+                常见：button, input, select, img（替换元素）
+                -->
+                <button>按钮 1</button>
+                <button>按钮 2</button>
+                <span class="inline-block-demo">我是 inline-block span</span>
+            </section>
+        </article>
+
+        <article>
+            <h2>语义化 HTML5 标签速查</h2>
+            <!--
+            语义化 = 用正确的标签表达正确的内容含义。
+            如果不确定用什么标签，问自己："这个内容是什么？"
+
+            为什么重要？
+            1. SEO：搜索引擎理解你的页面结构，排名更靠前
+            2. 无障碍：屏幕阅读器根据标签跳转，视障用户能"听懂"你的页面
+            3. 维护：代码可读性 >> 满屏 <div class="...">
+            -->
+            <table>
+                <thead>
+                    <tr><th>标签</th><th>含义</th><th>类比（Java）</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>&lt;header&gt;</td><td>页头 / 区块头</td><td>类的顶部注释 + 导入区</td></tr>
+                    <tr><td>&lt;nav&gt;</td><td>导航链接</td><td>方法签名区</td></tr>
+                    <tr><td>&lt;main&gt;</td><td>页面主体（每个页面唯一）</td><td>main() 方法体</td></tr>
+                    <tr><td>&lt;article&gt;</td><td>独立内容单元（可被分发/引用）</td><td>一个独立的 class</td></tr>
+                    <tr><td>&lt;section&gt;</td><td>文档章节（带主题的分组）</td><td>class 中的一个方法</td></tr>
+                    <tr><td>&lt;aside&gt;</td><td>侧边内容（相关但非核心）</td><td>注释 / 文档中的 "参见"</td></tr>
+                    <tr><td>&lt;footer&gt;</td><td>页脚</td><td>类的版权/版本注释</td></tr>
+                    <tr><td>&lt;figure&gt; + &lt;figcaption&gt;</td><td>图文组合（图片+说明）</td><td>带 Javadoc 的字段</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <aside>
+            <h3>💡 每天学一点</h3>
+            <!--
+            aside：与主要内容相关但不是核心的内容。
+            相当于博客的侧边栏——推荐文章、标签云等。
+            -->
+            <blockquote>
+                你不需要记住所有 HTML 标签，知道它们存在就行。
+                用到时查 <a href="https://developer.mozilla.org/zh-CN/" target="_blank">MDN</a> 即可。
+            </blockquote>
+            <!--  ⚠️ target="_blank" 的安全风险：
+                  被打开的页面可以通过 window.opener 访问你的页面！
+                  加上 rel="noopener noreferrer" 防止钓鱼攻击。   -->
+        </aside>
+    </main>
+
+    <!-- ── 页脚 ──────────────────────────────────────── -->
+    <footer>
+        <p>&copy; 2026 前端学习笔记 | <small>用 HTML5 语义标签构建</small></p>
+
+        <!-- ── address：联系信息，通常放在 footer 中 ────── -->
+        <address>
+            反馈请发邮件：<a href="mailto:learner@example.com">learner@example.com</a>
+        </address>
+    </footer>
+
+    <!--
+    ══════════════════════════════════════════════════════════════
+    ⚠️ 常见错误
+    ══════════════════════════════════════════════════════════════
+    1. 把 div 当万能标签 → 用语义标签代替，SEO 和可访问性更好
+    2. script 放在 head 阻塞渲染 → 放在 body 末尾，或加 defer
+    3. 忘记 alt 属性 → <img> 必须有 alt，无障碍访问和 SEO 都需要
+    4. 多个 <main> → 一个页面只能有一个 main（它代表"核心内容"）
+    5. 用 <br> 制造间距 → 间距应该用 CSS 控制，<br> 只用于文字换行
+    -->
+</body>
+</html>

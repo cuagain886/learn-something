@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 02_html_forms —— 表单与验证
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 常用 input 类型及其行为差异
+  2. 原生表单验证（不需 JS！）
+  3. label 的正确绑定方式
+  4. fieldset / legend 分组
+  5. 表单可访问性基础（a11y）
+
+【Java 程序员的视角】
+  表单 = 后端接口的入参（DTO）。
+  name 属性 = 字段名，value = 字段值。
+  method="POST" 对应 @PostMapping，action 对应 URL。
+
+【运行】浏览器打开此文件
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>02 - HTML 表单与验证</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>📝 用户注册表单</h1>
+        <p>展示常用表单元素 + 原生验证能力</p>
+    </header>
+
+    <main>
+        <!--
+        ═════════════════════════════════════════════════════════════
+        form 属性说明：
+          action   - 提交目标 URL（留空 = 提交到当前页）
+          method   - GET（数据在 URL 中）/ POST（数据在请求体中）
+          novalidate - 禁用原生验证（开发时用于测试自定义验证）
+
+        提交时浏览器自动按 name=value 格式收集数据。
+        ═════════════════════════════════════════════════════════════
+        -->
+        <form id="register-form" method="POST" autocomplete="on">
+
+            <!-- ── fieldset：表单分组（视觉 + 语义）─────────── -->
+            <fieldset>
+                <legend>👤 基本信息</legend>
+                <!-- legend：fieldset 的标题，读屏器自动关联 -->
+
+                <!-- ── 文本输入 ──────────────────────────── -->
+                <!--
+                label 的两种写法：
+                1. <label for="id"> —— 推荐，显式关联
+                2. <label> 包裹 input —— 隐式关联（某些读屏器支持不好）
+
+                ⚠️ 永远不要只用 placeholder 代替 label！
+                   placeholder 在输入后消失，用户会忘记要填什么。
+                -->
+                <div class="form-group">
+                    <label for="username">用户名 *</label>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           placeholder="3-16位字母或数字"
+                           required
+                           minlength="3"
+                           maxlength="16"
+                           pattern="[a-zA-Z0-9]+"
+                           autocomplete="username">
+                    <span class="hint">3-16 位，只能包含字母和数字</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">邮箱 *</label>
+                    <input type="email"
+                           id="email"
+                           name="email"
+                           placeholder="your@example.com"
+                           required
+                           autocomplete="email">
+                    <span class="hint">浏览器自动校验邮箱格式</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密码 *</label>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           placeholder="至少8位"
+                           required
+                           minlength="8"
+                           autocomplete="new-password">
+                    <span class="hint">最少 8 位；password 类型会隐藏输入内容</span>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>📋 详细信息</legend>
+
+                <div class="form-group">
+                    <label for="birthday">出生日期</label>
+                    <!-- type="date"：浏览器会弹出原生日期选择器 -->
+                    <input type="date" id="birthday" name="birthday">
+                </div>
+
+                <div class="form-group">
+                    <label for="age">年龄</label>
+                    <!-- type="number"：浏览器显示数字键盘（移动端）+ 步进箭头 -->
+                    <input type="number"
+                           id="age"
+                           name="age"
+                           min="1"
+                           max="150"
+                           step="1"
+                           placeholder="1-150">
+                </div>
+
+                <div class="form-group">
+                    <label for="avatar">头像</label>
+                    <!--
+                    accept 限制文件类型：
+                    - image/*    所有图片
+                    - .png,.jpg  特定格式
+                    - video/*    所有视频
+                    -->
+                    <input type="file"
+                           id="avatar"
+                           name="avatar"
+                           accept="image/*">
+                </div>
+
+                <div class="form-group">
+                    <label>性别</label>
+                    <!--
+                    type="radio"：单选按钮
+                    同一组 radio 必须有相同的 name 属性
+                    只有被选中的那个会被提交
+                    -->
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="male"> 男
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="female"> 女
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="other"> 其他
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>感兴趣的领域</label>
+                    <!--
+                    type="checkbox"：多选
+                    ⚠️ 用同一个 name 值时，只有 checked 的会提交
+                    -->
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="interests" value="html"> HTML
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="interests" value="css"> CSS
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="interests" value="js"> JavaScript
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="interests" value="react"> React
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="level">前端程度</label>
+                    <!-- select：下拉选择框 -->
+                    <select id="level" name="level">
+                        <option value="">-- 请选择 --</option>
+                        <!-- optgroup 分组：纯视觉分组，不可选 -->
+                        <optgroup label="入门">
+                            <option value="beginner">🌱 小白</option>
+                            <option value="learning">📖 正在学</option>
+                        </optgroup>
+                        <optgroup label="进阶">
+                            <option value="intermediate">💪 能干活</option>
+                            <option value="advanced">🚀 资深</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="bio">个人简介</label>
+                    <!-- textarea：多行文本 -->
+                    <textarea id="bio"
+                              name="bio"
+                              rows="4"
+                              placeholder="介绍一下你自己..."
+                              maxlength="500"></textarea>
+                    <span class="hint">最多 500 字</span>
+                </div>
+
+                <div class="form-group">
+                    <!--
+                    type="checkbox" on a single checkbox:
+                    用于"同意条款"这种开/关场景
+                    -->
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="agree" required>
+                        我同意<a href="#" target="_blank">服务条款</a>（required：必须打勾才能提交）
+                    </label>
+                </div>
+            </fieldset>
+
+            <!-- ── 按钮组 ───────────────────────────────── -->
+            <div class="form-actions">
+                <!-- type="submit"：触发表单提交，触发表单验证 -->
+                <button type="submit" class="btn-primary">注册</button>
+
+                <!-- type="reset"：重置所有输入（很少用，容易误操作） -->
+                <button type="reset" class="btn-secondary">重置</button>
+
+                <!-- type="button"：纯按钮，不提交不重置，留给 JS 处理 -->
+                <button type="button" class="btn-secondary" onclick="alert('这是一个普通按钮')">
+                    普通按钮（JS 控制）
+                </button>
+            </div>
+        </form>
+
+        <!-- ── 提交结果展示区（JS 拦截提交展示数据用）─ -->
+        <section id="result" style="display:none;">
+            <h2>📦 提交的数据（FormData）</h2>
+            <pre id="result-data"></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>试试：不填任何内容直接点"注册" → 浏览器原生验证提示会高亮第一个未填项</p>
+    </footer>
+
+    <script>
+        /*
+        ═════════════════════════════════════════════════════════════
+         JS 部分：拦截表单提交，展示 FormData。
+         这部分代码等学到第 13-14 课时再回头看。
+        ═════════════════════════════════════════════════════════════
+        */
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // 阻止默认提交（不跳转页面）
+
+            // FormData：浏览器原生 API，按 name=value 收集表单数据
+            const formData = new FormData(this);
+            const data = {};
+            for (const [key, value] of formData.entries()) {
+                if (data[key]) {
+                    // 同 key 多值（如 checkbox）→ 合并为数组
+                    data[key] = [].concat(data[key], value);
+                } else {
+                    data[key] = value;
+                }
+            }
+
+            document.getElementById('result-data').textContent =
+                JSON.stringify(data, null, 2);
+            document.getElementById('result').style.display = 'block';
+        });
+    </script>
+</body>
+</html>

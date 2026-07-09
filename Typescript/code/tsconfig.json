@@ -1,0 +1,62 @@
+{
+  // tsconfig.json 是 TypeScript 编译器（tsc）的配置文件。
+  // 它本身用的是 JSONC 格式（JSON with Comments），所以可以写注释。
+  // 下面每个选项都加了中文说明，这一份配置本身就是一节「工程配置」教学。
+  "compilerOptions": {
+    /* ============ 输出目标 ============ */
+    // 编译后生成的 JS 采用哪个 ECMAScript 版本的语法。
+    // ES2022 已经支持 class 私有字段(#x)、顶层 await、Array.at() 等现代特性。
+    "target": "ES2022",
+
+    // 编译时包含哪些内置类型库（如 Promise、Map、字符串方法等）。
+    // 不写时会根据 target 自动推断；这里显式写出便于理解。
+    "lib": ["ES2022"],
+
+    // 引入哪些「全局类型」包。["node"] 表示加载 @types/node，
+    // 这样 console、setTimeout、process、globalThis 等 Node 全局 API 才有类型。
+    // （因为上面 lib 没有包含 "DOM"，浏览器环境的 console 类型不会自动带进来。）
+    "types": ["node"],
+
+    /* ============ 模块系统 ============ */
+    // 生成的模块格式。ESNext 表示使用最新的 ES Module 语法（import/export）。
+    "module": "ESNext",
+
+    // 模块解析策略。"Bundler" 适配 tsx / Vite / esbuild 这类打包器/运行器，
+    // 好处是相对导入可以不写文件扩展名（写 './math-utils' 而不是 './math-utils.js'），
+    // 对初学者更友好。（若要用纯 Node 运行，则应改为 "NodeNext"。）
+    "moduleResolution": "Bundler",
+
+    // 允许用 `import x from 'y'` 的写法导入 CommonJS 模块（提升互操作性）。
+    "esModuleInterop": true,
+
+    // 允许导入 JSON 文件并获得类型。
+    "resolveJsonModule": true,
+
+    /* ============ 类型检查严格度 ============ */
+    // 一键开启所有严格检查（强烈建议初学就打开，养成好习惯）。
+    // 它等价于同时开启 strictNullChecks、noImplicitAny、strictFunctionTypes 等一系列选项。
+    "strict": true,
+
+    // 这两个在学习项目里关掉：示例中经常声明了变量/参数却不使用，
+    // 否则会因为「未使用」而报错，打断学习节奏。真实项目里建议开启。
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    /* ============ 其它 ============ */
+    // 跳过对第三方 .d.ts 声明文件的类型检查，加快编译、避免无关报错。
+    "skipLibCheck": true,
+
+    // 强制 import 时文件名大小写一致（Windows 大小写不敏感，开启可避免跨平台 bug）。
+    "forceConsistentCasingInFileNames": true,
+
+    /* ============ 编译产物（仅 npm run build 时用到） ============ */
+    "rootDir": "src",          // 源码根目录
+    "outDir": "dist",          // 编译输出目录
+    "sourceMap": true,         // 生成 .map 便于调试时映射回 .ts 源码
+    "declaration": true        // 同时生成 .d.ts 类型声明文件
+  },
+  // 哪些文件纳入编译范围。
+  "include": ["src/**/*"],
+  // 哪些目录排除。
+  "exclude": ["node_modules", "dist"]
+}

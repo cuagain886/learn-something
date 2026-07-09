@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 12_js_arrays —— 数组与高阶方法
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 数组创建与基本操作
+  2. map / filter / reduce —— 数组三剑客（告别 for 循环！）
+  3. find / some / every / flatMap 等实用方法
+  4. 不可变操作 vs 原地修改
+  5. 数组解构与展开
+
+【Java 程序员的视角】
+  JS 数组 ≈ Java 的 ArrayList<Object>（没有泛型约束）。
+  map/filter/reduce ≈ Java Stream API 的 map/filter/reduce。
+  学会这三个方法后，你基本不需要写传统的 for 循环。
+
+【运行】浏览器打开此文件，F12 → Console 查看输出
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>12 - JavaScript 数组</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+        article { background: #fafafa; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 14px; }
+        th { background: #4a90d9; color: white; }
+        .tip { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 10px 15px; margin: 10px 0; }
+        .danger { background: #ffebee; border-left: 4px solid #e74c3c; padding: 10px 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <header style="border-bottom:3px solid #4a90d9;margin-bottom:30px;padding-bottom:10px;">
+        <h1>📋 JavaScript 数组 —— 告别 for 循环</h1>
+        <p>F12 → Console 查看输出</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 数组三剑客：map / filter / reduce</h2>
+            <table>
+                <thead><tr><th>方法</th><th>作用</th><th>返回值</th><th>Java Stream 对应</th></tr></thead>
+                <tbody>
+                    <tr><td><code>map(fn)</code></td><td>把每个元素"变"成另一个值</td><td>同长度新数组</td><td>Stream.map()</td></tr>
+                    <tr><td><code>filter(fn)</code></td><td>筛选满足条件的元素</td><td>新数组（可能更短）</td><td>Stream.filter()</td></tr>
+                    <tr><td><code>reduce(fn, init)</code></td><td>把所有元素"归约"成一个值</td><td>单个值（任意类型）</td><td>Stream.reduce()</td></tr>
+                </tbody>
+            </table>
+            <div class="tip"><strong>💡 核心理念：</strong>这三个方法都不会修改原数组（不可变），而是返回新数组。这是函数式编程的基础。</div>
+        </article>
+
+        <article>
+            <h2>2. 更多实用数组方法</h2>
+            <table>
+                <thead><tr><th>方法</th><th>作用</th><th>返回值</th></tr></thead>
+                <tbody>
+                    <tr><td><code>find(fn)</code></td><td>查找第一个满足条件的元素</td><td>单个元素 或 undefined</td></tr>
+                    <tr><td><code>findIndex(fn)</code></td><td>查找第一个满足条件的索引</td><td>索引 或 -1</td></tr>
+                    <tr><td><code>some(fn)</code></td><td>是否有元素满足条件？</td><td>boolean</td></tr>
+                    <tr><td><code>every(fn)</code></td><td>是否所有元素都满足条件？</td><td>boolean</td></tr>
+                    <tr><td><code>flatMap(fn)</code></td><td>map + flat(1) 合并</td><td>扁平化数组</td></tr>
+                    <tr><td><code>sort(fn)</code></td><td>排序（⚠️默认按字符串排！）</td><td>修改原数组并返回</td></tr>
+                    <tr><td><code>includes(val)</code></td><td>是否包含某值？</td><td>boolean</td></tr>
+                    <tr><td><code>join(sep)</code></td><td>用分隔符连接所有元素</td><td>string</td></tr>
+                    <tr><td><code>slice(start,end)</code></td><td>提取子数组（不可变）</td><td>新数组</td></tr>
+                    <tr><td><code>splice(start,n)</code></td><td>删除/插入（⚠️修改原数组）</td><td>被删除的元素</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>3. 不可变 vs 原地修改</h2>
+            <table>
+                <thead><tr><th>✅ 不可变（返回新数组，推荐）</th><th>⚠️ 原地修改（修改原数组）</th></tr></thead>
+                <tbody>
+                    <tr><td>map, filter, reduce, find, some, every, slice, concat, flat, flatMap</td><td>push, pop, shift, unshift, splice, sort, reverse, fill</td></tr>
+                </tbody>
+            </table>
+            <div class="tip"><strong>💡 最佳实践：</strong>尽量使用不可变方法。如果需要"修改"数组，用展开运算符创建新数组：<code>const updated = [...arr, newItem]</code></div>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 12 - JavaScript 数组 ═══\n');
+
+        // ── 0. 创建数组 ──────────────────────────────
+        console.log('── 0. 创建数组 ──');
+        const arr1 = [1, 2, 3, 4, 5];
+        const arr2 = Array.from({ length: 5 }, (_, i) => i * 2);  // [0,2,4,6,8]
+        console.log('Array.from:', arr2);
+        const arr3 = Array.from('hello');  // ['h','e','l','l','o']
+        console.log("Array.from('hello'):", arr3);
+
+        // ── 1. map ───────────────────────────────────
+        console.log('\n── 1. map：逐个转换 ──');
+        const numbers = [1, 2, 3, 4, 5];
+        const doubled = numbers.map(n => n * 2);
+        const labeled = numbers.map((n, i) => `第${i}个是${n}`);
+        console.log('原数组:', numbers);
+        console.log('doubled:', doubled);         // [2, 4, 6, 8, 10]
+        console.log('labeled:', labeled);
+
+        // ── 2. filter ───────────────────────────────
+        console.log('\n── 2. filter：筛选 ──');
+        const evens = numbers.filter(n => n % 2 === 0);
+        const big = numbers.filter(n => n > 3);
+        console.log('evens:', evens);     // [2, 4]
+        console.log('>3:', big);          // [4, 5]
+
+        // 组合 map + filter（链式调用）
+        const result = numbers
+            .filter(n => n % 2 !== 0)    // 先筛出奇数: [1, 3, 5]
+            .map(n => n * n);             // 再平方: [1, 9, 25]
+        console.log('奇数平方:', result);
+
+        // ── 3. reduce ───────────────────────────────
+        console.log('\n── 3. reduce：归约 ──');
+        const sum = numbers.reduce((acc, n) => acc + n, 0);
+        const product = numbers.reduce((acc, n) => acc * n, 1);
+        const max = numbers.reduce((acc, n) => Math.max(acc, n), -Infinity);
+        console.log('求和:', sum);       // 15
+        console.log('求积:', product);   // 120
+        console.log('最大值:', max);     // 5
+
+        // reduce 做分组（类似 Java 的 Collectors.groupingBy）
+        const people = [
+            { name: 'Alice', team: 'A' },
+            { name: 'Bob', team: 'B' },
+            { name: 'Charlie', team: 'A' },
+            { name: 'David', team: 'B' },
+            { name: 'Eve', team: 'A' },
+        ];
+        const byTeam = people.reduce((acc, person) => {
+            const { team } = person;
+            if (!acc[team]) acc[team] = [];
+            acc[team].push(person.name);
+            return acc;
+        }, {});
+        console.log('按队伍分组:', byTeam);  // { A: ['Alice','Charlie','Eve'], B: ['Bob','David'] }
+
+        // ── 4. find / some / every ──────────────────
+        console.log('\n── 4. find / some / every ──');
+        const items = [
+            { id: 1, name: '苹果', price: 5 },
+            { id: 2, name: '香蕉', price: 3 },
+            { id: 3, name: '樱桃', price: 15 },
+            { id: 4, name: '榴莲', price: 100 },
+        ];
+        const found = items.find(item => item.id === 3);
+        console.log('find id=3:', found);     // { id:3, name:'樱桃', ... }
+        const notFound = items.find(item => item.id === 999);
+        console.log('find id=999:', notFound); // undefined
+
+        console.log('有 >50 元的吗?', items.some(item => item.price > 50));   // true
+        console.log('都 < 10 元吗?', items.every(item => item.price < 10));   // false
+
+        // ── 5. flatMap ──────────────────────────────
+        console.log('\n── 5. flatMap ──');
+        // 场景：每个部门有若干员工，把所有员工拉平
+        const departments = [
+            { name: '工程部', employees: ['张三', '李四'] },
+            { name: '设计部', employees: ['王五'] },
+            { name: '市场部', employees: ['赵六', '钱七', '孙八'] },
+        ];
+        const allEmployees = departments.flatMap(dept => dept.employees);
+        console.log('所有员工:', allEmployees);  // ['张三','李四','王五','赵六','钱七','孙八']
+
+        // ── 6. sort（⚠️默认按字符串排！）────────────
+        console.log('\n── 6. sort —— 注意默认行为！ ──');
+        const nums = [2, 10, 5, 1, 20];
+        console.log('默认 sort:', [...nums].sort());        // ⚠️ [1, 10, 2, 20, 5]（按字符串！）
+        console.log('数字 sort:', [...nums].sort((a, b) => a - b));  // ✅ [1, 2, 5, 10, 20]
+
+        // ── 7. 数组解构 ─────────────────────────────
+        console.log('\n── 7. 数组解构 ──');
+        const colors = ['red', 'green', 'blue'];
+        const [first, second] = colors;
+        console.log(`first=${first}, second=${second}`);  // red, green
+        const [, , third] = colors;
+        console.log('third:', third);  // blue
+        // 交换两个变量（不需要 temp！）
+        let x = 1, y = 2;
+        [x, y] = [y, x];
+        console.log(`交换后: x=${x}, y=${y}`);
+
+        // ── 8. 不可变数组操作 ────────────────────────
+        console.log('\n── 8. 不可变操作（React 核心模式） ──');
+        const list = [1, 2, 3];
+        // 追加元素
+        const appended = [...list, 4];
+        // 前置元素
+        const prepended = [0, ...list];
+        // 插入（位置 i，删除 0 个，插入新元素）
+        const inserted = [...list.slice(0, 1), 99, ...list.slice(1)];
+        // 删除（filter 是最干净的不可变删除方式）
+        const removed = list.filter(n => n !== 2);
+        // 更新（map）
+        const updated = list.map(n => n === 2 ? 200 : n);
+
+        console.log('原数组:', list);       // [1, 2, 3]（始终不变！）
+        console.log('追加:', appended);    // [1, 2, 3, 4]
+        console.log('前置:', prepended);   // [0, 1, 2, 3]
+        console.log('插入99:', inserted);  // [1, 99, 2, 3]
+        console.log('删除2:', removed);    // [1, 3]
+        console.log('更新2:', updated);    // [1, 200, 3]
+
+        console.log('\n✅ 12_js_arrays 完成！');
+    </script>
+</body>
+</html>

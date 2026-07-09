@@ -1,0 +1,23 @@
+{
+  "name": "learn-ts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript 全面学习示例项目（带详细中文注释，按编号循序渐进）",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "tsx src/01-basic-types.ts"
+  },
+  "keywords": [
+    "typescript",
+    "learning",
+    "tutorial"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}

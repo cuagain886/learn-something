@@ -1,0 +1,97 @@
+/* 基础样式：让语义标签的效果"看得见" */
+
+body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.8;
+    color: #333;
+}
+
+header {
+    border-bottom: 3px solid #4a90d9;
+    padding-bottom: 10px;
+    margin-bottom: 30px;
+}
+
+nav a {
+    color: #4a90d9;
+    text-decoration: none;
+    margin-right: 10px;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+.demo-block {
+    background: #e3f2fd;
+    border: 2px solid #2196f3;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.inline-block-demo {
+    display: inline-block;
+    width: 200px;           /* 行内元素加 display: inline-block 后宽高才生效 */
+    height: 40px;
+    background: #c8e6c9;
+    border: 1px solid #4caf50;
+}
+
+article {
+    margin-bottom: 40px;
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 8px;
+}
+
+aside {
+    background: #fff3e0;
+    padding: 15px 20px;
+    border-left: 4px solid #ff9800;
+    margin: 20px 0;
+}
+
+blockquote {
+    margin: 0;
+    font-style: italic;
+    color: #666;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 15px 0;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px 14px;
+    text-align: left;
+}
+
+th {
+    background: #4a90d9;
+    color: white;
+}
+
+td:first-child {
+    font-family: "Consolas", "Courier New", monospace;
+    white-space: nowrap;
+}
+
+footer {
+    border-top: 1px solid #ddd;
+    margin-top: 40px;
+    padding-top: 20px;
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+}
+
+h2 {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 8px;
+}

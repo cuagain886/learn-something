@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 09_js_basics —— JavaScript 语言基础
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 变量声明：var（别用）/ let / const
+  2. 基本类型：number, string, boolean, null, undefined, symbol, bigint
+  3. == vs === —— JS 最著名的"坑"
+  4. 类型转换（强制转换 vs 显式转换）
+  5. 严格模式 "use strict"
+
+【Java 程序员的视角】
+  JS 是动态弱类型语言，变量没有固定类型，运行时才知道。
+  这既是灵活性来源，也是 bug 温床。学习时要重点理解"JS 的行为"，不要用 Java 的思维去猜测。
+
+【运行】浏览器打开此文件，F12 → Console 查看输出
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>09 - JavaScript 语言基础</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+        article { background: #fafafa; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 14px; }
+        th { background: #4a90d9; color: white; }
+        .danger { background: #ffebee; border-left: 4px solid #e74c3c; padding: 10px 15px; margin: 10px 0; }
+        .tip { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 10px 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <header style="border-bottom:3px solid #4a90d9;margin-bottom:30px;padding-bottom:10px;">
+        <h1>☕→📜 JavaScript 语言基础</h1>
+        <p>打开 DevTools Console（F12）查看 JS 输出结果</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 变量声明：let / const / var</h2>
+            <table>
+                <thead><tr><th>关键字</th><th>作用域</th><th>可重复赋值</th><th>提升</th><th>建议</th></tr></thead>
+                <tbody>
+                    <tr><td><code>let</code></td><td>块级 { }</td><td>✅</td><td>TDZ（暂时性死区）</td><td>✅ 可变变量用 let</td></tr>
+                    <tr><td><code>const</code></td><td>块级 { }</td><td>❌（引用不可变）</td><td>TDZ</td><td>✅ 默认用 const</td></tr>
+                    <tr><td><code>var</code></td><td>函数级</td><td>✅</td><td>undefined</td><td>❌ 永远不要用</td></tr>
+                </tbody>
+            </table>
+            <div class="tip"><strong>💡 最佳实践：</strong>默认用 <code>const</code>，需要重新赋值时才改用 <code>let</code>。<code>var</code> 是历史遗留，用它会引入难以调试的 bug。</div>
+        </article>
+
+        <article>
+            <h2>2. 基本类型 —— 只有 7 种</h2>
+            <table>
+                <thead><tr><th>类型</th><th>typeof 结果</th><th>说明</th><th>Java 对应</th></tr></thead>
+                <tbody>
+                    <tr><td>number</td><td>"number"</td><td>64 位浮点（没有 int/float 之分！）</td><td>double</td></tr>
+                    <tr><td>string</td><td>"string"</td><td>不可变，单双引号、模板字符串</td><td>String</td></tr>
+                    <tr><td>boolean</td><td>"boolean"</td><td>true / false</td><td>boolean</td></tr>
+                    <tr><td>null</td><td>"object" 😱</td><td>表示"空值"（历史 bug，修复会破坏互联网）</td><td>null</td></tr>
+                    <tr><td>undefined</td><td>"undefined"</td><td>变量声明但未赋值时的默认值</td><td>无对应</td></tr>
+                    <tr><td>symbol</td><td>"symbol"</td><td>唯一标识符（ES6）</td><td>无对应</td></tr>
+                    <tr><td>bigint</td><td>"bigint"</td><td>任意精度整数（ES2020）</td><td>BigInteger</td></tr>
+                </tbody>
+            </table>
+            <div class="danger"><strong>⚠️ typeof null === "object"</strong> —— 这是 JavaScript 最著名的 bug。判断 null 请用 <code>value === null</code>。</div>
+        </article>
+
+        <article>
+            <h2>3. == vs === —— 永远的坑</h2>
+            <table>
+                <thead><tr><th>比较</th><th>结果</th><th>为什么</th></tr></thead>
+                <tbody>
+                    <tr><td><code>0 == "0"</code></td><td>true</td><td>字符串被转换为数字</td></tr>
+                    <tr><td><code>0 === "0"</code></td><td>false</td><td>类型不同，直接返回 false</td></tr>
+                    <tr><td><code>"" == 0</code></td><td>true</td><td>空字符串 → 0</td></tr>
+                    <tr><td><code>null == undefined</code></td><td>true</td><td>规范规定</td></tr>
+                    <tr><td><code>null === undefined</code></td><td>false</td><td>类型不同</td></tr>
+                    <tr><td><code>[] == false</code></td><td>true</td><td>[] → "" → 0 → false</td></tr>
+                </tbody>
+            </table>
+            <div class="danger"><strong>⚠️ 铁律：永远用 === 和 !== ，永远不要用 == 和 !=</strong><br>只有在判断 null/undefined 时可例外：<code>value == null</code>（同时匹配 null 和 undefined）</div>
+        </article>
+
+        <article>
+            <h2>4. Falsy 值 —— 哪些值被视为 false</h2>
+            <p>JS 中只有 6 个 falsy 值（在布尔上下文中被视为 false），其他一切都是 truthy：</p>
+            <table>
+                <thead><tr><th>值</th><th>类型</th></tr></thead>
+                <tbody>
+                    <tr><td><code>false</code></td><td>boolean</td></tr>
+                    <tr><td><code>0</code>, <code>-0</code>, <code>0n</code></td><td>number, bigint</td></tr>
+                    <tr><td><code>""</code>, <code>''</code>, <code>``</code></td><td>string（空字符串）</td></tr>
+                    <tr><td><code>null</code></td><td>null</td></tr>
+                    <tr><td><code>undefined</code></td><td>undefined</td></tr>
+                    <tr><td><code>NaN</code></td><td>number</td></tr>
+                </tbody>
+            </table>
+            <div class="danger"><strong>⚠️ 注意：</strong><code>[]</code>（空数组）和 <code>{}</code>（空对象）都是 truthy！不要用 <code>if (arr)</code> 判断数组是否为空，用 <code>arr.length</code>。</div>
+        </article>
+    </main>
+
+    <script>
+        /*
+        ═════════════════════════════════════════════════════════════
+         所有 JS 代码在此，打开 Console（F12）查看运行结果
+        ═════════════════════════════════════════════════════════════
+        */
+        'use strict';   // ← 严格模式：禁止某些不安全操作，强烈推荐开启！
+        console.clear();
+        console.log('═══ 09 - JavaScript 语言基础 ═══\n');
+
+        // ── 1. 变量声明 ──────────────────────────────
+        console.log('── 1. let / const / var ──');
+
+        // ✅ const：声明常量（引用不可变，但对象/数组的内容可以变）
+        const MAX_SIZE = 100;
+        // MAX_SIZE = 200;        // ❌ TypeError: Assignment to constant variable
+        const arr = [1, 2, 3];
+        arr.push(4);              // ✅ 可以！const 保护的是"引用"，不是"内容"
+        console.log('const arr after push:', arr);
+
+        // ✅ let：块级作用域
+        let name = 'Alice';
+        name = 'Bob';             // ✅ 可以重新赋值
+        console.log('let name:', name);
+
+        // ❌ var：函数作用域 + 变量提升 → 永远是 bug 的来源
+        if (true) {
+            var leaked = '我泄漏出去了！';  // var 无视 {} 块
+        }
+        console.log('var leaked outside block:', leaked);  // 能访问到！
+
+        // ── 2. 类型探查 ──────────────────────────────
+        console.log('\n── 2. 类型 ──');
+        console.log('typeof 42:', typeof 42);           // "number"
+        console.log('typeof "hi":', typeof "hi");       // "string"
+        console.log('typeof true:', typeof true);       // "boolean"
+        console.log('typeof null:', typeof null);       // "object" 😱（历史 bug）
+        console.log('typeof undefined:', typeof undefined); // "undefined"
+        console.log('typeof Symbol():', typeof Symbol());   // "symbol"
+        console.log('typeof 10n:', typeof 10n);            // "bigint"
+        console.log('typeof [1,2,3]:', typeof [1,2,3]);   // "object"
+        console.log('Array.isArray([1,2,3]):', Array.isArray([1,2,3])); // true
+        console.log('typeof function(){}:', typeof function(){}); // "function"
+
+        console.log('\nNumber 特殊值:');
+        console.log('Infinity:', 1/0);                  // Infinity
+        console.log('-Infinity:', -1/0);                // -Infinity
+        console.log('NaN:', 'hello' * 3);               // NaN（Not a Number）
+        console.log('NaN === NaN:', NaN === NaN);       // false！（唯一的自身不等于自身的值）
+        console.log('Number.isNaN(NaN):', Number.isNaN(NaN)); // true（正确判断 NaN 的方式）
+
+        // ── 3. == vs === ────────────────────────────
+        console.log('\n── 3. == vs === ──');
+        console.log('0 == "0":', 0 == "0");       // true（类型转换）
+        console.log('0 === "0":', 0 === "0");     // false（类型不同）
+        console.log('"" == 0:', "" == 0);          // true
+        console.log('"" === 0:', "" === 0);        // false
+        console.log('null == undefined:', null == undefined);   // true
+        console.log('null === undefined:', null === undefined); // false
+        console.log('[] == false:', [] == false);  // true（邪恶！）
+
+        // ── 4. 类型转换 ──────────────────────────────
+        console.log('\n── 4. 类型转换 ──');
+        // 显式转换（推荐）
+        console.log("Number('42'):", Number('42'));       // 42
+        console.log("String(42):", String(42));           // "42"
+        console.log("Boolean(1):", Boolean(1));           // true
+        console.log("Boolean(0):", Boolean(0));           // false
+        // 隐式转换（要小心）
+        console.log("'5' - 2:", '5' - 2);     // 3（字符串被转成数字）
+        console.log("'5' + 2:", '5' + 2);     // "52"（数字被转成字符串！+ 号特殊）
+        console.log("true + 1:", true + 1);   // 2（true → 1）
+        console.log("false + 1:", false + 1); // 1（false → 0）
+        // 逻辑运算符的短路行为
+        console.log("'hello' || 'world':", 'hello' || 'world');  // "hello"（返回第一个 truthy 值）
+        console.log("0 || 'default':", 0 || 'default');         // "default"（0 是 falsy）
+        console.log("'hello' && 'world':", 'hello' && 'world');  // "world"（返回最后一个 truthy 值）
+        console.log("0 && 'world':", 0 && 'world');             // 0（短路）
+        // 可选链和空值合并（ES2020）
+        const obj = null;
+        console.log("obj?.name:", obj?.name);                   // undefined（不报错！）
+        console.log("null ?? 'default':", null ?? 'default');   // "default"
+        console.log("0 ?? 'default':", 0 ?? 'default');        // 0（?? 只有 null/undefined 才回退）
+
+        // ── 5. 引用类型 vs 基本类型 ──────────────────
+        console.log('\n── 5. 引用 vs 值 ──');
+        // 基本类型：比较值（和 Java 一样）
+        const a = 42, b = 42;
+        console.log('42 === 42:', a === b);  // true
+
+        // 引用类型：比较引用（和 Java 一样）
+        const list1 = [1, 2];
+        const list2 = [1, 2];
+        console.log('[1,2] === [1,2]:', list1 === list2);  // false！（不同引用）
+        const listRef = list1;
+        console.log('list1 === listRef:', list1 === listRef);  // true
+
+        console.log('\n✅ 09_js_basics 完成！继续看 Console 输出的每一行。');
+    </script>
+</body>
+</html>

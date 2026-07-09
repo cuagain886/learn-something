@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 13_dom_manipulation —— DOM 操作
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. DOM 是什么：浏览器把 HTML 解析成的对象树
+  2. 查询元素：querySelector / querySelectorAll / getElementById
+  3. 创建 & 插入：createElement / append / insertAdjacentHTML
+  4. 修改内容：textContent vs innerHTML vs innerText
+  5. 修改样式：classList / style / dataset（自定义属性）
+  6. 删除元素：remove()
+
+【Java 程序员的视角】
+  DOM 树 ≈ Java Swing 的组件树（Component Tree）。
+  每个 HTML 标签 → 一个 Element 对象
+  querySelector ≈ CSS 选择器版的 findElement
+
+【运行】浏览器打开此文件，F12 → Console 查看输出
+       点击按钮观察页面变化
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>13 - DOM 操作</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+        header { border-bottom:3px solid #4a90d9; margin-bottom:30px; padding-bottom:10px; }
+        article { background:#fafafa; border-radius:8px; padding:20px; margin-bottom:30px; }
+        h2 { border-bottom:2px solid #eee; padding-bottom:8px; }
+        code { background:#f0f0f0; padding:1px 5px; border-radius:3px; }
+
+        .highlight { background: #fff9c4 !important; }
+        .completed { text-decoration: line-through; opacity: 0.6; }
+        .error { color: #e74c3c; font-weight: bold; }
+
+        #todo-list { list-style: none; padding: 0; }
+        #todo-list li {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #todo-list li:hover { background: #e3f2fd; }
+
+        .btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; font-size:14px; margin:4px; }
+        .btn-primary { background:#4a90d9; color:white; }
+        .btn-danger { background:#e74c3c; color:white; }
+        .btn-small { padding:2px 8px; font-size:12px; }
+
+        input { padding:8px 12px; border:2px solid #ddd; border-radius:4px; font-size:14px; width:250px; }
+        table { border-collapse:collapse; width:100%; margin:10px 0; }
+        th,td { border:1px solid #ddd; padding:8px 12px; font-size:14px; text-align:left; }
+        th { background:#4a90d9; color:white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🌳 DOM 操作 —— 用 JS 操控页面</h1>
+        <p>文档对象模型（Document Object Model）= HTML 的 JS 对象表示</p>
+    </header>
+
+    <main>
+        <!-- 演示区：一个简单的 Todo 列表 -->
+        <article>
+            <h2>演示：Todo 列表（用 DOM 操作实现）</h2>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input id="todo-input" type="text" placeholder="输入待办事项..." maxlength="50">
+                <button class="btn btn-primary" id="add-btn">添加</button>
+            </div>
+            <ul id="todo-list">
+                <li data-id="1">学习 HTML <button class="btn btn-small btn-danger delete-btn">×</button></li>
+                <li data-id="2">学习 CSS <button class="btn btn-small btn-danger delete-btn">×</button></li>
+                <li data-id="3">学习 JavaScript <button class="btn btn-small btn-danger delete-btn">×</button></li>
+            </ul>
+            <p id="todo-count">共 <strong>3</strong> 项</p>
+        </article>
+
+        <!-- 演示区：classList 和样式操作 -->
+        <article>
+            <h2>classList / style / dataset 操作</h2>
+            <div id="demo-box" class="" data-user="alice" data-role="admin">
+                我是演示盒子（点击我切换样式）
+            </div>
+            <p>data-user: <code id="dataset-display"></code></p>
+            <button class="btn btn-primary" id="toggle-btn">切换高亮</button>
+            <button class="btn btn-primary" id="style-btn">改颜色</button>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 13 - DOM 操作 ═══\n');
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         DOM 查询 —— 获取页面上的元素
+        ═════════════════════════════════════════════════════════════
+        */
+        console.log('── DOM 查询 ──');
+
+        // querySelector：返回第一个匹配的元素（类似 CSS 选择器）
+        const header = document.querySelector('header');
+        console.log('header element:', header);
+
+        // querySelectorAll：返回 NodeList（类似数组但不是数组）
+        const allArticles = document.querySelectorAll('article');
+        console.log('article 数量:', allArticles.length);
+        // NodeList 可以用 forEach，但没有 map/filter。转数组：Array.from(list) 或 [...list]
+
+        // getElementById：更快，但只能用 id 查询
+        const todoInput = document.getElementById('todo-input');
+        console.log('todo-input element:', todoInput);
+
+        // 其他查询
+        const todoList = document.querySelector('#todo-list');
+        const firstLi = document.querySelector('#todo-list li');  // 第一个 li
+        const allLis = document.querySelectorAll('#todo-list li');
+
+        console.log('第一个 li:', firstLi);
+        console.log('所有 li:', allLis.length, '个');
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         DOM 创建 & 插入
+        ═════════════════════════════════════════════════════════════
+        */
+        console.log('\n── DOM 创建 & 插入 ──');
+
+        // 方法 1：createElement + appendChild（安全但繁琐）
+        function createTodoItem(text) {
+            const li = document.createElement('li');
+            li.textContent = text;  // 纯文本（安全，XSS 免疫）
+
+            const btn = document.createElement('button');
+            btn.textContent = '×';
+            btn.className = 'btn btn-small btn-danger delete-btn';
+            btn.addEventListener('click', () => li.remove());
+
+            li.appendChild(btn);
+            return li;
+        }
+
+        // 方法 2：insertAdjacentHTML（更灵活，但注意 XSS）
+        // 位置：beforebegin / afterbegin / beforeend / afterend
+        // <div>
+        //   afterbegin → <div> ← beforeend
+        // </div>
+        // beforebegin → <div> ← afterend
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         innerHTML vs textContent —— ⚠️ XSS 安全
+        ═════════════════════════════════════════════════════════════
+        */
+        console.log('\n── innerHTML vs textContent ──');
+        const demoEl = document.getElementById('demo-box');
+
+        console.log('textContent:', demoEl.textContent);  // 只返回文本（忽略 HTML 标签）
+        console.log('innerHTML:', demoEl.innerHTML);      // 返回 HTML 字符串
+
+        // ⚠️ 安全原则：永远不要让用户输入直接进入 innerHTML！
+        // ❌ el.innerHTML = userInput;  // 用户输入 <script>alert('XSS')</script> 就完了
+        // ✅ el.textContent = userInput; // 安全，所有特殊字符被转义
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         classList —— 操作 CSS 类
+        ═════════════════════════════════════════════════════════════
+        */
+        // 不要用 el.className = "xxx"（会覆盖所有已有 class）
+        // 用 classList API：
+        document.getElementById('toggle-btn').addEventListener('click', () => {
+            demoEl.classList.toggle('highlight');   // 切换（有则删除，无则添加）
+            console.log('highlight class:', demoEl.classList.contains('highlight'));
+        });
+
+        // style：设置内联样式
+        document.getElementById('style-btn').addEventListener('click', () => {
+            const hue = Math.floor(Math.random() * 360);
+            // 通过 style 属性设置（会覆盖内联样式）
+            demoEl.style.backgroundColor = `hsl(${hue}, 70%, 90%)`;
+            demoEl.style.borderColor = `hsl(${hue}, 70%, 50%)`;
+            console.log('style changed:', demoEl.style.backgroundColor);
+        });
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         dataset —— 读取 HTML 自定义属性
+        ═════════════════════════════════════════════════════════════
+        HTML:  <div data-user="alice" data-role="admin">
+        JS:    el.dataset.user → "alice"
+                el.dataset.role → "admin"
+        */
+        console.log('\n── dataset ──');
+        console.log('dataset.user:', demoEl.dataset.user);   // "alice"
+        console.log('dataset.role:', demoEl.dataset.role);   // "admin"
+        document.getElementById('dataset-display').textContent =
+            JSON.stringify(demoEl.dataset);
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         Todo List 交互
+        ═════════════════════════════════════════════════════════════
+        */
+        let nextId = 4;  // 已有 3 个
+
+        // 添加 Todo
+        document.getElementById('add-btn').addEventListener('click', () => {
+            const text = todoInput.value.trim();
+            if (!text) return;
+
+            const li = createTodoItem(text);
+            li.dataset.id = nextId++;
+            todoList.appendChild(li);
+            todoInput.value = '';
+            todoInput.focus();
+            updateCount();
+        });
+
+        // 回车添加
+        todoInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('add-btn').click();
+        });
+
+        // 点击切换完成状态
+        todoList.addEventListener('click', (e) => {
+            // 只处理 li 点击（不包括按钮）
+            if (e.target.tagName === 'LI') {
+                e.target.classList.toggle('completed');
+            }
+        });
+
+        // 给已存在的删除按钮绑定事件 + 删除功能
+        todoList.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();  // 防止冒泡触发 li 的 click
+                btn.closest('li').remove();
+                updateCount();
+            });
+        });
+
+        // 更新计数
+        function updateCount() {
+            const count = todoList.querySelectorAll('li').length;
+            document.querySelector('#todo-count strong').textContent = count;
+        }
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         常用 DOM 操作速查
+        ═════════════════════════════════════════════════════════════
+        console.log('\n── 常用 DOM 属性/方法速查 ──');
+        console.log('el.parentElement   : 父元素');
+        console.log('el.children        : 子元素集合（HTMLCollection）');
+        console.log('el.nextElementSibling : 下一个兄弟元素');
+        console.log('el.previousElementSibling : 上一个兄弟元素');
+        console.log('el.closest("selector") : 向上查找最近的匹配祖先');
+        console.log('el.matches("selector") : 当前元素是否匹配选择器');
+        console.log('el.getBoundingClientRect() : 元素尺寸和位置');
+        console.log('el.scrollIntoView()  : 滚动到可见区域');
+        */
+
+        console.log('\n✅ 13_dom_manipulation 完成！试试在页面上添加/删除 Todo 吧。');
+    </script>
+</body>
+</html>

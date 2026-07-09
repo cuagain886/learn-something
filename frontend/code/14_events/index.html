@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 14_events —— 事件处理
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 事件绑定三种方式：HTML 属性 / DOM 属性 / addEventListener
+  2. 事件委托（Event Delegation）—— 前端性能的核心技巧
+  3. 事件冒泡与捕获（Bubbling & Capturing）
+  4. stopPropagation / preventDefault
+  5. 常用事件类型速查
+
+【Java 程序员的视角】
+  事件系统 ≈ Java 的 Observer 模式 / ActionListener。
+  事件冒泡 ≈ 异常向上传递（但事件会一直冒到 document）。
+  事件委托 ≈ 在父节点注册一个监听器，利用冒泡处理所有子节点事件。
+
+【运行】浏览器打开此文件，点击各种按钮观察 Console 输出
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>14 - 事件处理</title>
+    <style>
+        body { font-family:"Microsoft YaHei",sans-serif; max-width:800px; margin:0 auto; padding:20px; line-height:1.8; }
+        header { border-bottom:3px solid #4a90d9; margin-bottom:30px; padding-bottom:10px; }
+        article { background:#fafafa; border-radius:8px; padding:20px; margin-bottom:30px; }
+        h2 { border-bottom:2px solid #eee; padding-bottom:8px; }
+        code { background:#f0f0f0; padding:1px 5px; border-radius:3px; }
+        table { border-collapse:collapse; width:100%; margin:10px 0; }
+        th,td { border:1px solid #ddd; padding:8px 12px; font-size:14px; text-align:left; }
+        th { background:#4a90d9; color:white; }
+        .btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; margin:4px; }
+        .btn-primary { background:#4a90d9; color:white; }
+
+        /* ── 事件委托演示列表 ──────────────────────── */
+        #delegation-list { list-style:none; padding:0; }
+        #delegation-list li {
+            padding:10px 14px;
+            margin:4px 0;
+            background:white;
+            border:1px solid #ddd;
+            border-radius:4px;
+            cursor:pointer;
+            transition:background 0.2s;
+        }
+        #delegation-list li:hover { background:#e3f2fd; }
+        #delegation-list li.active { background:#c8e6c9; border-color:#4caf50; }
+
+        /* ── 冒泡演示 ──────────────────────────────── */
+        .bubble-outer {
+            padding:30px;
+            background:#ffcdd2;
+            border-radius:8px;
+            text-align:center;
+        }
+        .bubble-middle {
+            padding:25px;
+            background:#fff9c4;
+            border-radius:6px;
+            margin:10px;
+        }
+        .bubble-inner {
+            padding:20px;
+            background:#bbdefb;
+            border-radius:4px;
+            margin:10px;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎪 事件处理 —— 让页面响应用户操作</h1>
+        <p>F12 → Console 查看详细日志</p>
+    </header>
+
+    <main>
+        <!-- 1. 事件委托演示 -->
+        <article>
+            <h2>1. 事件委托（Event Delegation）—— 核心技巧</h2>
+            <p>💡 <strong>为什么重要？</strong>列表有 1000 项时，不需要绑定 1000 个事件监听器——只在父元素上绑定一个，利用事件冒泡处理。</p>
+            <ul id="delegation-list">
+                <li>项目 Alpha</li>
+                <li>项目 Beta</li>
+                <li>项目 Gamma</li>
+                <li>项目 Delta</li>
+            </ul>
+            <button class="btn btn-primary" id="add-item-btn">+ 添加项目</button>
+            <p>点击任意项目可选中/取消选中 —— 所有点击由父元素的一个事件监听器处理。</p>
+        </article>
+
+        <!-- 2. 事件冒泡演示 -->
+        <article>
+            <h2>2. 事件冒泡（Bubbling）—— 从内向外</h2>
+            <p>点击最内层的蓝色盒子，观察事件传播顺序：</p>
+            <div class="bubble-outer">
+                outer（外层）
+                <div class="bubble-middle">
+                    middle（中间层）
+                    <div class="bubble-inner" id="bubble-target">
+                        inner（内层）← 点击这里
+                    </div>
+                </div>
+            </div>
+            <p style="margin-top:10px;">
+                <button class="btn btn-primary" id="stop-bubble-btn">启用 stopPropagation（阻止冒泡）</button>
+                <span id="stop-bubble-status" style="margin-left:10px; font-size:14px; color:#888;"></span>
+            </p>
+        </article>
+
+        <!-- 3. 常用事件速查 -->
+        <article>
+            <h2>3. 常用事件类型速查</h2>
+            <table>
+                <thead><tr><th>类别</th><th>事件</th><th>触发时机</th></tr></thead>
+                <tbody>
+                    <tr><td rowspan="5">鼠标</td><td>click</td><td>单击（最常用）</td></tr>
+                    <tr><td>dblclick</td><td>双击</td></tr>
+                    <tr><td>mousedown / mouseup</td><td>按下 / 松开</td></tr>
+                    <tr><td>mouseenter / mouseleave</td><td>进入 / 离开（不冒泡）</td></tr>
+                    <tr><td>mouseover / mouseout</td><td>进入 / 离开（会冒泡）</td></tr>
+                    <tr><td rowspan="4">键盘</td><td>keydown</td><td>按下任意键（最常用）</td></tr>
+                    <tr><td>keyup</td><td>松开键</td></tr>
+                    <tr><td>keypress</td><td>按下字符键（已废弃）</td></tr>
+                    <tr><td>input</td><td>输入框值变化（实时，推荐替代 keydown）</td></tr>
+                    <tr><td rowspan="4">表单</td><td>submit</td><td>表单提交（在 form 上监听）</td></tr>
+                    <tr><td>change</td><td>select/file/checkbox 值变化</td></tr>
+                    <tr><td>focus / blur</td><td>获得 / 失去焦点</td></tr>
+                    <tr><td>focusin / focusout</td><td>获得 / 失去焦点（会冒泡）</td></tr>
+                    <tr><td rowspan="2">文档</td><td>DOMContentLoaded</td><td>DOM 解析完成（早于 window.onload）</td></tr>
+                    <tr><td>scroll / resize</td><td>滚动 / 窗口大小变化（需节流！）</td></tr>
+                    <tr><td rowspan="2">触摸</td><td>touchstart / touchend</td><td>触摸开始 / 结束</td></tr>
+                    <tr><td>touchmove</td><td>触摸移动</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 14 - 事件处理 ═══\n');
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         三种事件绑定方式
+        ═════════════════════════════════════════════════════════════
+        */
+        console.log('── 三种事件绑定方式 ──');
+
+        // ❌ 方式 1：HTML 属性 onclick="..."（不要用！污染 HTML，难以维护）
+        // ✅ 方式 2：DOM 属性 el.onclick = handler（仅用于简单场景，一个事件只能绑定一个处理器）
+        // ✅ 方式 3：addEventListener（推荐！可以绑定多个处理器、可以控制捕获/冒泡、可以 remove）
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         事件委托 —— 最重要的性能技巧
+        ═════════════════════════════════════════════════════════════
+        */
+        console.log('── 1. 事件委托 ──');
+
+        const delegationList = document.getElementById('delegation-list');
+
+        // ❌ 错误做法：给每个 li 单独绑定（如果有 1000 个 li，就绑 1000 个）
+        // ✅ 正确做法：只在父元素上绑定一个监听器
+        delegationList.addEventListener('click', function(event) {
+            // event.target = 实际被点击的元素（最内层）
+            // event.currentTarget = 绑定监听器的元素（= delegationList）
+
+            // 判断点击的是不是 li
+            if (event.target.tagName === 'LI') {
+                event.target.classList.toggle('active');
+                console.log('委托处理点击:', event.target.textContent.trim());
+            }
+        });
+
+        // 动态添加新项目：不需要额外绑定事件！自动被委托处理
+        let counter = 5;
+        document.getElementById('add-item-btn').addEventListener('click', () => {
+            const li = document.createElement('li');
+            li.textContent = `项目 ${String.fromCharCode(64 + counter++)}`;
+            delegationList.appendChild(li);
+            console.log('✅ 动态添加了项目（无需绑定事件，委托自动生效）');
+        });
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         事件冒泡与捕获
+        ═════════════════════════════════════════════════════════════
+
+        事件传播的三个阶段：
+          1. 捕获阶段（Capture）：从 window → document → ... → 目标元素
+          2. 目标阶段（Target）：到达事件目标
+          3. 冒泡阶段（Bubble）：从目标 → 父 → 祖父 → ... → window（默认）
+
+        addEventListener 的第三个参数：
+          false（默认）= 冒泡阶段处理
+          true = 捕获阶段处理
+        */
+        console.log('\n── 2. 事件冒泡 ──');
+
+        const outer = document.querySelector('.bubble-outer');
+        const middle = document.querySelector('.bubble-middle');
+        const inner = document.getElementById('bubble-target');
+
+        function logBubble(phase, name) {
+            console.log(`  ${phase}: ${name}`);
+        }
+
+        // 默认：冒泡阶段（第三个参数 = false）
+        outer.addEventListener('click', () => logBubble('BUBBLE', 'outer'), false);
+        middle.addEventListener('click', () => logBubble('BUBBLE', 'middle'), false);
+        inner.addEventListener('click', () => logBubble('BUBBLE', 'inner  ← 目标'), false);
+
+        // 捕获阶段（第三个参数 = true）
+        outer.addEventListener('click', () => logBubble('CAPTURE', 'outer'), true);
+        middle.addEventListener('click', () => logBubble('CAPTURE', 'middle'), true);
+        inner.addEventListener('click', () => logBubble('CAPTURE', 'inner  ← 目标'), true);
+
+        console.log('点击蓝色 inner 区域，观察上面的事件流...');
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         stopPropagation / preventDefault
+        ═════════════════════════════════════════════════════════════
+        */
+        let stopBubble = false;
+
+        document.getElementById('stop-bubble-btn').addEventListener('click', () => {
+            stopBubble = !stopBubble;
+            document.getElementById('stop-bubble-status').textContent =
+                stopBubble ? '已启用（点击 inner 时事件不会冒泡到 outer）' : '已禁用';
+        });
+
+        // 在 inner 上加一个判断
+        inner.addEventListener('click', function(e) {
+            if (stopBubble) {
+                e.stopPropagation();  // 阻止事件继续向上冒泡
+                console.log('  ⛔ stopPropagation()：事件被阻止在 inner，不会到达 outer');
+            }
+            // e.preventDefault()：阻止浏览器默认行为
+            // 例如：阻止链接跳转、阻止表单提交、阻止复选框勾选
+        });
+
+        /*
+        ═════════════════════════════════════════════════════════════
+         常用事件监听模式
+        ═════════════════════════════════════════════════════════════
+        */
+
+        // ── 键盘事件：监听 Escape 键关闭弹窗 ──
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                console.log('⌨️ 按下了 Escape 键（常用于关闭弹窗/菜单）');
+            }
+            // e.key 属性返回按键名称（'Enter', 'Escape', 'ArrowLeft'...）
+            // e.ctrlKey, e.shiftKey, e.altKey, e.metaKey 判断修饰键
+        });
+
+        // ── 窗口事件：resize / scroll（需要防抖/节流，见 15_async） ──
+        window.addEventListener('resize', () => {
+            console.log(`窗口大小: ${window.innerWidth}x${window.innerHeight}`);
+        });
+
+        console.log('\n✅ 14_events 完成！动手点击页面上的元素试试吧。');
+    </script>
+</body>
+</html>

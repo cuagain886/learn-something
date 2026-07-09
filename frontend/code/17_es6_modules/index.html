@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 17_es6_modules —— ES6 模块化
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 命名导出（named export）vs 默认导出（default export）
+  2. 导入语法：import { } / import * as / import default
+  3. 动态导入：import() —— 代码分割的基石
+  4. 模块的特性：严格模式、作用域隔离、静态分析
+
+【Java 程序员的视角】
+  export ≈ Java 的 public
+  import ≈ Java 的 import（但可以导入变量/函数/类/任何东西）
+  default export ≈ 包的"主类"（一个模块只能有一个 default）
+  动态 import() ≈ Java 的 Class.forName() + 懒加载
+
+【运行】由于浏览器安全策略（CORS），file:// 协议不能加载模块。
+       请用以下方式之一运行：
+       1. VS Code Live Server 插件打开此文件
+       2. npx serve . 在本目录下启动一个开发服务器
+       3. 浏览器开发者工具中直接查看示例代码
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>17 - ES6 模块化</title>
+    <style>
+        body { font-family:"Microsoft YaHei",sans-serif; max-width:800px; margin:0 auto; padding:20px; line-height:1.8; }
+        header { border-bottom:3px solid #4a90d9; margin-bottom:30px; padding-bottom:10px; }
+        article { background:#fafafa; border-radius:8px; padding:20px; margin-bottom:30px; }
+        h2 { border-bottom:2px solid #eee; padding-bottom:8px; }
+        code { background:#f0f0f0; padding:1px 5px; border-radius:3px; }
+        table { border-collapse:collapse; width:100%; margin:10px 0; }
+        th,td { border:1px solid #ddd; padding:8px 12px; font-size:14px; text-align:left; }
+        th { background:#4a90d9; color:white; }
+        pre { background:#263238; color:#aed581; padding:15px; border-radius:4px; overflow-x:auto; font-size:14px; }
+        .tip { background:#e8f5e9; border-left:4px solid #4caf50; padding:10px 15px; margin:10px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📦 ES6 模块化 —— 告别全局变量</h1>
+        <p>模块化 = 每个 JS 文件有自己的作用域，需要显式 <code>export</code> 才能被其他文件使用。</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 导出（Export）</h2>
+            <pre>// ── math.js ──
+// 命名导出（可以导出多个）
+export const PI = 3.14159;
+export function add(a, b) { return a + b; }
+export function multiply(a, b) { return a * b; }
+
+// 默认导出（一个模块只能有一个）
+export default function sum(...nums) {
+    return nums.reduce((a, b) => a + b, 0);
+}</pre>
+        </article>
+
+        <article>
+            <h2>2. 导入（Import）</h2>
+            <pre>// ── 命名导入（需要知道导出的名字）──
+import { add, multiply, PI } from './math.js';
+
+// ── 重命名导入 ──
+import { add as myAdd } from './math.js';
+
+// ── 命名空间导入（导入所有命名导出作为一个对象）──
+import * as math from './math.js';
+math.add(1, 2);  // 3
+
+// ── 默认导入（可以任意命名）──
+import sum from './math.js';  // sum 是任意起的名字
+
+// ── 混合导入 ──
+import sum, { add, PI } from './math.js';
+
+// ── 只执行模块（不导入任何东西）──
+import './init.js';</pre>
+        </article>
+
+        <article>
+            <h2>3. 动态导入 import() —— 代码分割</h2>
+            <pre>// import() 返回 Promise，实现按需加载（Lazy Loading）
+const module = await import('./heavy-module.js');
+
+// 典型使用场景：路由懒加载
+button.addEventListener('click', async () => {
+    const { renderChart } = await import('./chart.js');
+    renderChart(data);
+});</pre>
+            <div class="tip">
+                <strong>💡 为什么重要？</strong>动态 import 是现代前端框架（React/Vue）实现<strong>代码分割（Code Splitting）</strong>和<strong>懒加载</strong>的基础。用户只下载当前页面需要的 JS，而不是一次性下载整个应用。
+            </div>
+        </article>
+
+        <article>
+            <h2>4. 模块的特性</h2>
+            <table>
+                <thead><tr><th>特性</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>严格模式</td><td>模块自动在严格模式下运行（不需要写 'use strict'）</td></tr>
+                    <tr><td>作用域隔离</td><td>模块顶层变量不会成为全局变量</td></tr>
+                    <tr><td>静态结构</td><td>import/export 必须在顶层，不能放在 if/函数内（方便 Tree Shaking）</td></tr>
+                    <tr><td>单例</td><td>同一个模块被多次 import，只会执行一次（类似 Java 的静态初始化）</td></tr>
+                    <tr><td>异步加载</td><td>浏览器原生支持，用 &lt;script type="module"&gt; 即可</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>5. ES Modules vs CommonJS</h2>
+            <table>
+                <thead><tr><th>特性</th><th>ES Modules</th><th>CommonJS (Node.js 旧版)</th></tr></thead>
+                <tbody>
+                    <tr><td>关键字</td><td>import / export</td><td>require / module.exports</td></tr>
+                    <tr><td>加载方式</td><td>异步（浏览器友好）</td><td>同步（服务器端 OK）</td></tr>
+                    <tr><td>静态分析</td><td>✅ 可 Tree Shaking</td><td>❌ 动态，难分析</td></tr>
+                    <tr><td>使用环境</td><td>浏览器 + Node.js（.mjs 或 type:"module"）</td><td>Node.js 默认</td></tr>
+                    <tr><td>导出</td><td>值的绑定（实时）</td><td>值的拷贝</td></tr>
+                </tbody>
+            </table>
+            <div class="tip"><strong>💡 现代前端开发中：</strong>统一使用 ES Modules。Node.js 22+ 也已完全支持。</div>
+        </article>
+    </main>
+
+    <!--
+    注意：type="module" 让浏览器按 ES Module 方式加载
+    由于 CORS 限制，需要通过 HTTP 服务器打开（不能用 file://）
+    -->
+    <script type="module">
+        // 这个文件在 file:// 协议下无法加载外部模块，
+        // 但内联的 type="module" 脚本可以运行。
+        // 实际使用时请通过 HTTP 服务器访问。
+
+        // 演示模块的基础概念（内联写法）
+        console.log('═══ ES6 模块基础概念（内联演示）═══');
+
+        // 模块作用域：这里的变量不会污染全局
+        const moduleScoped = '这个变量只在模块内可见';
+        console.log('模块作用域变量:', moduleScoped);
+        console.log('全局 window.moduleScoped:', window.moduleScoped);  // undefined
+    </script>
+</body>
+</html>

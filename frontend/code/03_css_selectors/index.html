@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 03_css_selectors —— CSS 选择器与优先级
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 基础选择器：类型、class、id、通配符、属性选择器
+  2. 组合器：后代、子代、相邻兄弟、通用兄弟
+  3. 伪类与伪元素：状态选择器 vs 虚拟元素
+  4. 特指度（Specificity）：为什么同一个样式有时"不生效"
+
+【Java 程序员的视角】
+  CSS 选择器 ≈ 数据库查询的 WHERE 条件。
+  特指度 = 优先级规则，类似 Java 中 "方法重写优先于父类方法"。
+
+【运行】浏览器打开此文件
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>03 - CSS 选择器与优先级</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>🎯 CSS 选择器实验室</h1>
+        <p>打开 DevTools（F12）查看每个元素的样式来源</p>
+    </header>
+
+    <main>
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 1. 基础选择器                                           -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>1. 基础选择器</h2>
+
+            <section class="demo-section">
+                <h3>类型、class、id、属性选择器</h3>
+
+                <!-- 直接用标签名选 -->
+                <blockquote>我是 blockquote —— 由标签选择器 blockquote { ... } 控制样式</blockquote>
+
+                <!-- .class 选择器（最常用） -->
+                <p class="highlight">class="highlight" —— 由 .highlight { ... } 控制</p>
+                <p class="highlight important">两个 class：highlight + important —— 由 .highlight.important 选中</p>
+
+                <!-- #id 选择器（尽量少用，特指度太高难以覆盖） -->
+                <p id="unique">id="unique" —— 由 #unique { ... } 控制（整个页面 id 必须唯一）</p>
+
+                <!-- 属性选择器 -->
+                <input type="text" placeholder="type=&quot;text&quot;" value="由 [type=&quot;text&quot;] 选中">
+                <input type="email" placeholder="type=&quot;email&quot;" value="由 [type=&quot;email&quot;] 选中">
+                <p>
+                    <a href="https://example.com" target="_blank">外部链接</a> |
+                    <a href="/about">内部链接</a> |
+                    <a href="https://example.com" target="_blank" rel="noopener">安全外部链接</a>
+                </p>
+            </section>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 2. 组合器                                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>2. 组合器（Combinators）</h2>
+
+            <section class="combinator-demo">
+                <h3>后代、子代、兄弟选择器</h3>
+
+                <!-- 后代选择器：空格 " " -->
+                <div class="ancestor">
+                    我是祖先
+                    <p>直接子元素（p —— 也是后代）</p>
+                    <div>
+                        我是中间层
+                        <p>嵌套在两层内的 p（后代但不是直接子代）</p>
+                    </div>
+                </div>
+
+                <!-- 子代选择器：> -->
+                <ul class="parent">
+                    我是 ul
+                    <li>直接子代 li（被 > 选中）</li>
+                    <li>另一个直接子代 li
+                        <ul>
+                            <li>嵌套的 li（不是 .parent 的直接子代，不被 > 选中）</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- 相邻兄弟 + 通用兄弟 -->
+                <div>
+                    <h4>兄弟选择器示例</h4>
+                    <p class="first">第一个 p（被 h4 + p 选中）</p>
+                    <p>第二个 p（被 h4 ~ p 选中）</p>
+                    <p>第三个 p（被 h4 ~ p 选中）</p>
+                </div>
+            </section>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 3. 伪类与伪元素                                         -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>3. 伪类 vs 伪元素</h2>
+
+            <!--
+            ⚠️ 伪类（:）= 元素的"状态"（hover, focus, first-child...）
+               伪元素（::）= 创建"虚拟元素"（before, after, first-line...）
+               CSS3 规定伪元素用 :: ，但 ::before 和 :before 都有效（兼容老代码）
+            -->
+            <section>
+                <h3>常用伪类</h3>
+                <ul class="pseudo-class-demo">
+                    <li>悬停在这行上 → :hover</li>
+                    <li>这是第一个 li → :first-child</li>
+                    <li>这是中间</li>
+                    <li>这是最后一个 li → :last-child</li>
+                </ul>
+
+                <p>
+                    <label>
+                        <input type="checkbox"> 勾选我 → :checked
+                    </label>
+                </p>
+
+                <p>
+                    <input type="text" placeholder="点我聚焦 → :focus" style="width:250px;">
+                </p>
+
+                <!-- nth-child 是最强大的伪类之一 -->
+                <h4>:nth-child() 示例 —— 斑马条纹表格</h4>
+                <table class="zebra">
+                    <thead><tr><th>#</th><th>名称</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td>:nth-child(odd)</td><td>选择所有奇数行</td></tr>
+                        <tr><td>2</td><td>:nth-child(even)</td><td>选择所有偶数行</td></tr>
+                        <tr><td>3</td><td>:nth-child(3n)</td><td>选择第 3, 6, 9... 行</td></tr>
+                        <tr><td>4</td><td>:nth-child(3n+1)</td><td>选择第 1, 4, 7... 行</td></tr>
+                        <tr><td>5</td><td>:nth-child(-n+3)</td><td>选择前 3 行</td></tr>
+                        <tr><td>6</td><td>:nth-last-child(1)</td><td>选择最后一行（= :last-child）</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h3>常用伪元素</h3>
+                <!-- ::before / ::after 需要 content 属性才显示 -->
+                <p class="with-before">这行前面有 ::before 添加的内容</p>
+                <p class="with-after">这行后面有 ::after 添加的内容</p>
+                <p class="first-line-demo">这是一段很长的文字用来演示 ::first-line 伪元素的效果。第一行会有特殊样式，无论窗口宽度如何变化，始终只影响第一行。</p>
+
+                <!-- ::selection：用户选中的文本样式 -->
+                <p>用鼠标选中这段文字试试 → 颜色不同</p>
+            </section>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 4. 特指度（Specificity）                                  -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>4. 特指度（Specificity）—— 为什么我的样式不生效？</h2>
+
+            <!--
+            特指度计算规则（从高到低）：
+              内联 style="..."  = 1,0,0,0
+              #id               = 0,1,0,0
+              .class / [attr] / :pseudo  = 0,0,1,0
+              element / ::pseudo-element = 0,0,0,1
+              *（通配符）        = 0,0,0,0
+
+            同一元素上多个规则冲突时，特指度高的胜出。
+            特指度相同时，后写的覆盖先写的（层叠规则）。
+
+            ⚠️ !important 能打破一切规则，但它是"核武器"——
+               只在极端情况下使用（如覆盖第三方样式），滥用会使代码无法维护。
+            -->
+
+            <section class="specificity-demo">
+                <h3>特指度实战</h3>
+                <!--
+                下面的 div 被三条规则命中：
+                  1. .box      → 0,0,1,0
+                  2. #my-box   → 0,1,0,0  ← 胜出！background 用绿色
+                  3. div.box   → 0,0,1,1  → 会被 #my-box 覆盖
+                -->
+                <div id="my-box" class="box red-box">#my-box .box .red-box</div>
+
+                <!--
+                用 !important 强行提升优先级——
+                背景色变为红色（.red-box 里用了 !important）
+                -->
+                <div id="my-box2" class="box red-box">#my-box2 .box .red-box (!important)</div>
+            </section>
+
+            <section>
+                <h3>特指度速查表</h3>
+                <!--
+                开发中遇到"样式不生效"时：
+                1. F12 打开 DevTools
+                2. 选中元素 → 看 Styles 面板
+                3. 被覆盖的样式会有删除线
+                4. 确认选择器拼写是否正确
+                5. 确认特指度是否被更高优先级的规则覆盖
+                -->
+                <table>
+                    <thead><tr><th>写法</th><th>特指度</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>*</code></td><td>0,0,0,0</td><td>通配符</td></tr>
+                        <tr><td><code>p</code></td><td>0,0,0,1</td><td>类型选择器</td></tr>
+                        <tr><td><code>p::first-line</code></td><td>0,0,0,2</td><td>类型 + 伪元素</td></tr>
+                        <tr><td><code>p.link</code></td><td>0,0,1,1</td><td>类型 + class</td></tr>
+                        <tr><td><code>#main .item</code></td><td>0,1,1,0</td><td>id + class</td></tr>
+                        <tr><td><code>style="..."</code></td><td>1,0,0,0</td><td>内联样式</td></tr>
+                        <tr><td><code>!important</code></td><td>∞</td><td>核武器（不要用）</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </article>
+    </main>
+
+    <footer>
+        <p>💡 选择器是 CSS 的"查询语言"。掌握选择器 = 掌握 CSS 一半的功力。</p>
+    </footer>
+</body>
+</html>

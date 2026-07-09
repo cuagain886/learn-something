@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 10_js_functions —— JavaScript 函数
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 四种函数定义方式：声明 / 表达式 / 箭头 / 方法简写
+  2. 参数：默认值、剩余参数（rest）、解构参数
+  3. 闭包（Closure）—— JS 的灵魂概念
+  4. this —— JS 最复杂的主题之一（与 Java 完全不同！）
+
+【Java 程序员的视角 】
+  函数 = Java 的 Lambda / 方法引用，但 JS 中函数是"一等公民"。
+  闭包 ≈ 在方法内部定义匿名类，持有对外部变量的引用。
+  this ≈ 完全不是你想的那样！动态绑定，由调用方式决定。
+
+【运行】浏览器打开此文件，F12 → Console 查看输出
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>10 - JavaScript 函数</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+        article { background: #fafafa; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 14px; }
+        th { background: #4a90d9; color: white; }
+        .danger { background: #ffebee; border-left: 4px solid #e74c3c; padding: 10px 15px; margin: 10px 0; }
+        .tip { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 10px 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <header style="border-bottom:3px solid #4a90d9;margin-bottom:30px;padding-bottom:10px;">
+        <h1>🔧 JavaScript 函数 —— 一等公民</h1>
+        <p>F12 → Console 查看输出</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 四种定义函数的方式</h2>
+            <table>
+                <thead><tr><th>方式</th><th>示例</th><th>特点</th></tr></thead>
+                <tbody>
+                    <tr><td>函数声明</td><td><code>function foo() {}</code></td><td>会提升（可以在定义前调用）</td></tr>
+                    <tr><td>函数表达式</td><td><code>const foo = function() {};</code></td><td>不会提升，赋值给变量</td></tr>
+                    <tr><td>箭头函数</td><td><code>const foo = () => {};</code></td><td>没有自己的 this（推荐）</td></tr>
+                    <tr><td>方法简写</td><td><code>{ foo() {} }</code></td><td>对象内的函数</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>2. 箭头函数 vs 普通函数</h2>
+            <table>
+                <thead><tr><th>特性</th><th>普通函数</th><th>箭头函数</th></tr></thead>
+                <tbody>
+                    <tr><td>语法</td><td><code>function(a,b){return a+b;}</code></td><td><code>(a,b) => a+b</code></td></tr>
+                    <tr><td>this</td><td>动态绑定（调用时确定）</td><td>词法绑定（定义时捕获，= 外层 this）</td></tr>
+                    <tr><td>arguments</td><td>有</td><td>没有（用 rest 参数替代）</td></tr>
+                    <tr><td>new</td><td>可以做构造函数</td><td>不能做构造函数</td></tr>
+                </tbody>
+            </table>
+            <div class="tip"><strong>💡 现代 JS 实践：</strong>默认用箭头函数。只有需要动态 this（如事件处理器）或需要使用 new 时才用普通函数。</div>
+        </article>
+
+        <article>
+            <h2>3. ⚠️ this 绑定规则（与 Java 完全不同！）</h2>
+            <p>JS 的 <code>this</code> 由<strong>调用方式</strong>决定，不由<strong>定义位置</strong>决定：</p>
+            <table>
+                <thead><tr><th>调用方式</th><th>this 指向</th></tr></thead>
+                <tbody>
+                    <tr><td><code>obj.method()</code></td><td>obj（点前面的对象）</td></tr>
+                    <tr><td><code>func()</code></td><td>严格模式：undefined；非严格模式：window</td></tr>
+                    <tr><td><code>new func()</code></td><td>新创建的空对象</td></tr>
+                    <tr><td><code>func.call(obj)</code> / <code>apply</code> / <code>bind</code></td><td>显式指定的对象</td></tr>
+                    <tr><td>箭头函数 <code>() => {}</code></td><td>定义时所在作用域的 this（词法绑定，不会变！）</td></tr>
+                </tbody>
+            </table>
+            <div class="danger"><strong>⚠️ Java 程序员最常见的坑：</strong>把方法作为回调传递时，this 会丢失！解决方法：① 用箭头函数 ② 用 .bind(this)</div>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 10 - JavaScript 函数 ═══\n');
+
+        // ── 1. 四种定义方式 ──────────────────────────
+        console.log('── 1. 四种定义方式 ──');
+
+        // ① 函数声明：会提升，可以在定义前调用
+        console.log('declaration before define:', greet('Alice'));  // ✅ 可以！
+        function greet(name) { return `Hello, ${name}!`; }
+
+        // ② 函数表达式：不会提升
+        // console.log(sayHi('Bob'));  // ❌ ReferenceError
+        const sayHi = function(name) { return `Hi, ${name}!`; };
+        console.log('expression:', sayHi('Bob'));
+
+        // ③ 箭头函数：简洁 + 词法 this
+        const add = (a, b) => a + b;
+        console.log('arrow add:', add(3, 5));           // 8
+        const double = x => x * 2;      // 单参数可省略括号
+        console.log('arrow double:', double(5));        // 10
+        const noArgs = () => 'no args';  // 无参数需空括号
+        console.log('arrow no args:', noArgs());
+
+        // ④ 方法简写
+        const user = {
+            name: 'Alice',
+            greet() { return `I'm ${this.name}`; }  // 方法简写
+        };
+        console.log('method shorthand:', user.greet());
+
+        // ── 2. 参数 ──────────────────────────────────
+        console.log('\n── 2. 参数 ──');
+
+        // 默认参数（类似 Java 方法重载的效果）
+        function createUser(name, role = 'user', active = true) {
+            return { name, role, active };
+        }
+        console.log('default params (full):', createUser('Alice', 'admin', false));
+        console.log('default params (partial):', createUser('Bob'));  // role='user', active=true
+
+        // 剩余参数（rest）= Java 的 int... args（可变参数）
+        function sum(...numbers) {
+            return numbers.reduce((total, n) => total + n, 0);
+        }
+        console.log('rest sum(1,2,3,4):', sum(1, 2, 3, 4));  // 10
+
+        // 解构参数
+        function printUser({ name, age, city = '未知' }) {
+            console.log(`  ${name}, ${age}岁, 来自${city}`);
+        }
+        printUser({ name: '小明', age: 25, city: '北京' });
+        printUser({ name: '小红', age: 30 });  // city 用默认值
+
+        // ── 3. 闭包（Closure）── JS 的灵魂 ───────────
+        console.log('\n── 3. 闭包 ──');
+        /*
+        闭包 = 函数 + 它能访问的外部变量。
+        在 Java 中，Lambda 表达式捕获的外部变量必须是"effectively final"的；
+        JS 没有这个限制：闭包可以捕获并修改外部变量。
+        */
+        function createCounter(initial = 0) {
+            let count = initial;           // 这个变量被"封闭"在返回的函数中
+            return {
+                increment: () => ++count,
+                decrement: () => --count,
+                get: () => count,
+            };
+        }
+        const counterA = createCounter(10);
+        const counterB = createCounter(0);
+        console.log('counterA:', counterA.increment(), counterA.increment()); // 11, 12
+        console.log('counterB:', counterB.increment());  // 1（独立！互不影响）
+        // counterA 和 counterB 各自持有独立的 count，类似 Java 中 new 了两个对象
+
+        // 经典闭包应用：工厂函数
+        function multiply(factor) {
+            return (num) => num * factor;  // factor 被闭包捕获
+        }
+        const double2 = multiply(2);
+        const triple = multiply(3);
+        console.log('double(5):', double2(5));  // 10
+        console.log('triple(5):', triple(5));   // 15
+
+        // ── 4. this 绑定规则 ────────────────────────
+        console.log('\n── 4. this —— Java 程序员最需要适应的概念 ──');
+
+        const person = {
+            name: '张三',
+            // 普通函数：this 由调用方式决定
+            greetNormal: function() {
+                return `你好，我是${this.name}`;
+            },
+            // 箭头函数：this 在定义时捕获（= 外层作用域的 this）
+            greetArrow: () => {
+                // ⚠️ 这里的 this 不是 person，而是外层（这里是 window/global）
+                return `箭头函数的 this.name = ${this?.name}`;
+            },
+            // ✅ 正确写法：方法简写（等价于普通函数）
+            greet() {
+                return `你好，我是${this.name}`;
+            }
+        };
+        console.log('person.greet():', person.greet());           // 张三 ✅
+        console.log('person.greetNormal():', person.greetNormal()); // 张三 ✅
+        console.log('person.greetArrow():', person.greetArrow());   // undefined ❌
+
+        // ⚠️ this 丢失问题 —— Java 程序员最常见的 bug
+        const extracted = person.greet;      // 把方法赋值给一个变量
+        // console.log(extracted());          // ❌ TypeError! this 变成了 undefined
+        /*
+        为什么？extracted() 是"裸调用"，不是 obj.method() 形式。
+        解决方案：
+        */
+        // 方案 1：用 .bind() 绑定 this
+        const bound = person.greet.bind(person);
+        console.log('.bind(person):', bound());  // ✅ 你好，我是张三
+        // 方案 2：用箭头函数包装
+        const arrowWrap = () => person.greet();
+        console.log('arrowWrap():', arrowWrap());  // ✅ 你好，我是张三
+
+        console.log('\n✅ 10_js_functions 完成！');
+    </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 11_js_objects —— JavaScript 对象
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 对象字面量 —— JS 最灵活的数据结构
+  2. 属性操作：点语法、方括号、计算属性、属性简写
+  3. 解构（Destructuring）—— JS 最实用的语法糖之一
+  4. 展开运算符（Spread）—— 不可变操作的利器
+  5. 可选链（Optional Chaining）—— 安全的深层属性访问
+  6. 原型链概览（不深入，非现代 JS 主流方式）
+
+【Java 程序员的视角】
+  JS 对象 ≈ Map<String, Object> + 原型继承。
+  JS 中没有"类"的概念（class 只是语法糖，底层仍然是原型）。
+  现代 JS 开发中，对象的字面量/解构/展开比 class 更常用。
+
+【运行】浏览器打开此文件，F12 → Console 查看输出
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>11 - JavaScript 对象</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+        article { background: #fafafa; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px 12px; font-size: 14px; text-align: left; }
+        th { background: #4a90d9; color: white; }
+        .tip { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 10px 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <header style="border-bottom:3px solid #4a90d9;margin-bottom:30px;padding-bottom:10px;">
+        <h1>📦 JavaScript 对象 —— 万能数据结构</h1>
+        <p>F12 → Console 查看输出</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 对象字面量 —— 创建对象的标准方式</h2>
+            <p>JS 对象本质上是一个字符串到任意值的映射（类似 Java 的 <code>Map&lt;String, Object&gt;</code>），但语法更简洁。</p>
+            <table>
+                <thead><tr><th>特性</th><th>写法</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>属性简写</td><td><code>{ name }</code></td><td>等同于 { name: name }</td></tr>
+                    <tr><td>方法简写</td><td><code>{ greet() {} }</code></td><td>等同于 { greet: function() {} }</td></tr>
+                    <tr><td>计算属性名</td><td><code>{ [key]: value }</code></td><td>key 可以是变量/表达式</td></tr>
+                    <tr><td>属性存在检查</td><td><code>key in obj</code></td><td>比 obj.key !== undefined 更准确</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>2. 解构（Destructuring）—— 最实用的语法糖</h2>
+            <table>
+                <thead><tr><th>场景</th><th>写法</th></tr></thead>
+                <tbody>
+                    <tr><td>提取属性</td><td><code>const { name, age } = user</code></td></tr>
+                    <tr><td>重命名</td><td><code>const { name: userName } = user</code></td></tr>
+                    <tr><td>默认值</td><td><code>const { age = 18 } = user</code></td></tr>
+                    <tr><td>嵌套解构</td><td><code>const { addr: { city } } = user</code></td></tr>
+                    <tr><td>函数参数</td><td><code>function f({ name, age }) {}</code></td></tr>
+                    <tr><td>剩余属性</td><td><code>const { id, ...rest } = obj</code></td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>3. 展开运算符（Spread）—— 不可变更新</h2>
+            <p>展开运算符 <code>...</code> 是"不可变数据操作"的核心工具：</p>
+            <table>
+                <thead><tr><th>操作</th><th>写法</th><th>Java 对比</th></tr></thead>
+                <tbody>
+                    <tr><td>复制对象</td><td><code>const copy = { ...obj }</code></td><td>浅拷贝（类似 BeanUtils.copyProperties）</td></tr>
+                    <tr><td>合并对象</td><td><code>const merged = { ...a, ...b }</code></td><td>b 的同名属性覆盖 a</td></tr>
+                    <tr><td>更新属性</td><td><code>const updated = { ...obj, age: 30 }</code></td><td>创建新对象而非修改原对象</td></tr>
+                    <tr><td>条件属性</td><td><code>const o = { ...base, ...(cond && { extra }) }</code></td><td>条件性地添加属性</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 11 - JavaScript 对象 ═══\n');
+
+        // ── 1. 对象字面量 ────────────────────────────
+        console.log('── 1. 对象字面量 ──');
+        const id = 1;
+        const name = 'Alice';
+        const roleKey = 'role';
+
+        const user = {
+            id,              // 属性简写：等同于 id: id
+            name,            // 属性简写
+            [roleKey]: 'admin', // 计算属性名：等同于 role: 'admin'
+            tags: ['js', 'css'],
+            // 方法简写
+            describe() {
+                return `${this.name} (${this.role}) - ${this.tags.join(', ')}`;
+            },
+            // getter：访问时像属性，实际是方法
+            get displayName() {
+                return `${this.name}#${this.id}`;
+            },
+            // setter
+            set displayName(value) {
+                const [n, i] = value.split('#');
+                this.name = n;
+                // id 通常是不可变的，这里仅示意 setter 语法
+            }
+        };
+        console.log('user object:', user);
+        console.log('user.describe():', user.describe());
+        console.log('user.displayName:', user.displayName);  // 像属性一样访问 getter
+
+        // 属性访问的两种方式
+        console.log('user.name:', user.name);            // 点语法
+        console.log('user["name"]:', user['name']);      // 方括号（key 可以是变量）
+        console.log('user[roleKey]:', user[roleKey]);    // 变量作为 key
+
+        // 属性检查
+        console.log('"name" in user:', 'name' in user);          // true
+        console.log('"salary" in user:', 'salary' in user);      // false
+        console.log('user.hasOwnProperty("name"):', user.hasOwnProperty('name')); // true
+
+        // 遍历对象
+        console.log('Object.keys():', Object.keys(user));
+        console.log('Object.values():', Object.values(user));
+        console.log('Object.entries():', Object.entries(user).slice(0, 4)); // 前 4 个
+
+        // ── 2. 解构 ──────────────────────────────────
+        console.log('\n── 2. 解构（Destructuring） ──');
+
+        const product = {
+            pid: 'P001',
+            pname: '机械键盘',
+            price: 399,
+            stock: 100,
+            category: {
+                main: '电子产品',
+                sub: '外设',
+            },
+        };
+
+        // 基础解构
+        const { pname, price } = product;
+        console.log(`基础解构: ${pname} - ¥${price}`);
+
+        // 重命名 + 默认值
+        const { pname: productName, discount = 0 } = product;
+        console.log(`重命名+默认值: ${productName}, 折扣=${discount}`);
+
+        // 嵌套解构
+        const { category: { main, sub } } = product;
+        console.log(`嵌套解构: ${main} > ${sub}`);
+
+        // 剩余属性（Rest）：排除某些属性
+        const { pid, ...productWithoutId } = product;
+        console.log('排除pid后的剩余属性:', Object.keys(productWithoutId));
+
+        // 函数参数解构（最常见用法）
+        function printProduct({ pname, price, stock = 0 }) {
+            console.log(`  📦 ${pname}: ¥${price}（库存: ${stock}）`);
+        }
+        printProduct(product);
+
+        // ── 3. 展开运算符 ────────────────────────────
+        console.log('\n── 3. 展开运算符（Spread） ──');
+
+        const defaults = { theme: 'light', lang: 'zh-CN', fontSize: 14 };
+        const userPrefs = { theme: 'dark', fontSize: 16 };
+
+        // 合并：后面的覆盖前面的
+        const config = { ...defaults, ...userPrefs };
+        console.log('合并配置:', config);  // theme='dark', lang='zh-CN', fontSize=16
+
+        // 不可变更新（React/Vue 的核心模式）
+        const original = { x: 1, y: 2, z: 3 };
+        const updated = { ...original, y: 99 };  // 创建新对象，不修改 original
+        console.log('original (unchanged):', original);
+        console.log('updated:', updated);
+
+        // 条件属性
+        const showDebug = true;
+        const appConfig = {
+            ...defaults,
+            ...(showDebug && { debug: true, verbose: 'detailed' }),
+        };
+        console.log('条件属性:', appConfig);
+
+        // ── 4. 可选链（Optional Chaining）────────────
+        console.log('\n── 4. 可选链 ?. ──');
+        // 在 Java 中：if (obj != null && obj.getX() != null) obj.getX().getY()
+        // 在 JS 中：obj?.x?.y
+
+        const deep = { level1: { level2: { value: 42 } } };
+        console.log('深层存在:', deep?.level1?.level2?.value);   // 42
+        console.log('深层缺失:', deep?.a?.b?.c);                // undefined（不报错！）
+
+        const nullObj = null;
+        console.log('null?.x:', nullObj?.x);                   // undefined
+        // nullObj.x   → ❌ TypeError!
+
+        // 可选链也可以用于方法调用和数组
+        const obj = { fn: () => 'hello' };
+        console.log('方法可选链:', obj.fn?.());       // "hello"
+        console.log('不存在方法:', obj.other?.());    // undefined（不报错）
+        const arr = null;
+        console.log('数组可选链:', arr?.[0]);          // undefined
+
+        // ── 5. 删除属性 ─────────────────────────────
+        console.log('\n── 5. 其他对象操作 ──');
+        const obj2 = { a: 1, b: 2, c: 3 };
+        delete obj2.b;
+        console.log('delete obj2.b:', obj2);  // { a: 1, c: 3 }
+
+        // Object.freeze（浅冻结，类似 Java 的不可变对象）
+        const frozen = Object.freeze({ x: 1, y: { z: 2 } });
+        frozen.x = 999;  // 静默失败（严格模式报错）
+        console.log('frozen.x 修改后:', frozen.x);  // 1（没变！）
+        frozen.y.z = 999;  // ⚠️ 深层属性仍可变（浅冻结！）
+        console.log('frozen.y.z 修改后:', frozen.y.z);  // 999（变了！）
+
+        console.log('\n✅ 11_js_objects 完成！');
+    </script>
+</body>
+</html>

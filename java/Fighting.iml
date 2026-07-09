@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/code/01_oop_advanced" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/02_generics" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/03_collections" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/04_exceptions" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/05_enum_annotation" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/06_lambda" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/07_stream" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/08_optional" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/09_datetime" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/10_io_nio" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/11_thread_basics" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/12_concurrent_utils" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/13_records" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/14_sealed" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/15_pattern_matching" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/16_text_block_switch" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/17_virtual_threads" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/19_reflection_proxy" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

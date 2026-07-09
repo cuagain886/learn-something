@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 08_css_animations —— CSS 过渡与动画
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. transition：属性变化的"过渡动画"
+  2. transform：位移/旋转/缩放/倾斜（不影响布局流！）
+  3. @keyframes + animation：复杂动画
+  4. 性能原则：只动画 transform 和 opacity
+
+【Java 程序员的视角】
+  transition ≈ JavaFX 的 Transition / Timeline
+  @keyframes ≈ 定义动画的关键帧时间线
+  核心原则：动画不触发 layout → GPU 加速 → 60fps 流畅
+
+【运行】浏览器打开此文件，鼠标悬停在各种元素上观察效果
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>08 - CSS 过渡与动画</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        header {
+            border-bottom: 3px solid #4a90d9;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+        }
+        article {
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+
+        /* ═══════════════════════════════════════════════════════
+           1. transition：属性变化的"缓动"
+           ═══════════════════════════════════════════════════════
+           transition: <属性> <时长> <缓动函数> <延迟>
+        */
+
+        /* ── 基础 transition ─────────────────────────── */
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #4a90d9;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            /* 一句话：所有属性变化时用 0.3s 过渡 */
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #357abd;
+            transform: translateY(-2px);        /* 向上移动 2px */
+            box-shadow: 0 4px 12px rgba(74,144,217,0.4);
+        }
+        .btn:active {
+            transform: translateY(1px);          /* 按下时下沉 */
+        }
+
+        /* ── 不同属性不同过渡 ──────────────────────── */
+        .card-transition {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            /* 不同属性用不同过渡时间：制作更自然的交互 */
+            transition:
+                transform 0.3s ease,
+                box-shadow 0.3s ease,
+                background 0.15s ease;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .card-transition:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           2. transform：不影响布局流的"变形"
+           ═══════════════════════════════════════════════════════
+           transform 的最大优点：不触发 reflow（重排），性能好。
+           对比：改变 width/height/top/left → 触发 layout → 性能差。
+        */
+        .transform-box {
+            width: 80px;
+            height: 80px;
+            background: #4a90d9;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 15px;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .translate:hover  { transform: translate(20px, -10px); }  /* 平移 */
+        .rotate:hover     { transform: rotate(15deg); }            /* 旋转 */
+        .scale-hover:hover { transform: scale(1.2); }             /* 缩放 */
+        .skew-hover:hover  { transform: skew(10deg, 5deg); }       /* 倾斜 */
+
+        /* ═══════════════════════════════════════════════════════
+           3. @keyframes + animation：复杂动画
+           ═══════════════════════════════════════════════════════ */
+
+        /* ── 脉冲动画 ────────────────────────────────── */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.1); }
+        }
+        .pulse {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 4px;
+            animation: pulse 2s ease-in-out infinite; /* 无限循环 */
+        }
+
+        /* ── 淡入 + 下滑 ────────────────────────────── */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .fade-in-down {
+            animation: fadeInDown 0.6s ease-out both;
+        }
+        /* animation-fill-mode: both 让动画结束后保持最终状态 */
+
+        /* ── 加载旋转器（Loader） ────────────────────── */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #ddd;
+            border-top-color: #4a90d9;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* ── 骨骼屏（Skeleton）动画 ──────────────────── */
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            height: 20px;
+            border-radius: 4px;
+            margin: 8px 0;
+            background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           4. 性能原则
+           ═══════════════════════════════════════════════════════ */
+        .perf-good {
+            width: 200px;
+            padding: 15px;
+            background: #c8e6c9;
+            border-radius: 6px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            margin: 5px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .perf-good:hover {
+            transform: translateY(-5px);    /* ✅ 只触发 composite */
+        }
+        .perf-bad {
+            width: 200px;
+            padding: 15px;
+            background: #ffcdd2;
+            border-radius: 6px;
+            text-align: center;
+            transition: top 0.3s ease;       /* ❌ top 触发 layout */
+            margin: 5px;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th { background: #4a90d9; color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>✨ CSS 过渡与动画</h1>
+        <p>让界面"活"起来：从简单的悬停效果到复杂的 keyframe 动画。</p>
+    </header>
+
+    <main>
+        <!-- 1. Transition -->
+        <article>
+            <h2>1. Transition —— 从 A 到 B 的平滑过渡</h2>
+            <p><button class="btn">悬停在我上面试试</button></p>
+            <div class="card-transition">
+                <strong>卡片悬停效果</strong>
+                <p>transform + box-shadow + 不同过渡时间 = 自然的"浮起"感</p>
+            </div>
+        </article>
+
+        <!-- 2. Transform -->
+        <article>
+            <h2>2. Transform —— 不触发重排的变形</h2>
+            <div class="transform-box translate">translate</div>
+            <div class="transform-box rotate">rotate</div>
+            <div class="transform-box scale-hover">scale</div>
+            <div class="transform-box skew-hover">skew</div>
+            <p>💡 多个 transform 可以组合：<code>transform: translateX(10px) rotate(45deg) scale(1.2);</code></p>
+            <p>⚠️ 多个 transform 不能分开写，后面的会覆盖前面的！必须写在一起。</p>
+        </article>
+
+        <!-- 3. @keyframes -->
+        <article>
+            <h2>3. @keyframes —— 自定义多阶段动画</h2>
+
+            <p><span class="pulse">脉冲效果（infinite loop）</span></p>
+
+            <p><strong>Loader（加载动画）：</strong></p>
+            <div class="loader"></div>
+
+            <p><strong>Skeleton Screen（骨架屏）：</strong></p>
+            <div class="skeleton" style="width:60%;"></div>
+            <div class="skeleton" style="width:80%;"></div>
+            <div class="skeleton" style="width:40%;"></div>
+
+            <p class="fade-in-down" style="background:#e8f5e9;padding:15px;border-radius:6px;">
+                ✅ 这个元素用了 fadeInDown 动画（从上方淡入）—— 刷新页面即可看到效果
+            </p>
+        </article>
+
+        <!-- 4. 性能 -->
+        <article>
+            <h2>4. ⚡ 性能：只动画 transform 和 opacity</h2>
+            <p>浏览器的渲染流水线：<strong>Layout → Paint → Composite</strong></p>
+            <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                <div class="perf-good">
+                    ✅ transform<br><small>只触发 Composite<br>GPU 加速，60fps</small>
+                </div>
+                <div class="perf-bad">
+                    ❌ top / left / width<br><small>触发 Layout 重排<br>可能卡顿</small>
+                </div>
+            </div>
+            <table style="margin-top:15px;">
+                <thead><tr><th>属性</th><th>触发阶段</th><th>性能</th><th>建议</th></tr></thead>
+                <tbody>
+                    <tr><td>transform, opacity</td><td>Composite only</td><td>✅ 最佳</td><td>动画首选</td></tr>
+                    <tr><td>color, background</td><td>Paint → Composite</td><td>⚠️ 可接受</td><td>谨慎使用</td></tr>
+                    <tr><td>width, height, top, left, margin, padding</td><td>Layout → Paint → Composite</td><td>❌ 避免</td><td>用 transform 替代</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+</body>
+</html>

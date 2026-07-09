@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 06_css_grid —— Grid 网格布局
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. Grid 容器属性：template-columns/rows、gap、template-areas
+  2. fr 单位 —— Grid 的灵魂
+  3. Grid 项目属性：column/row、span、area
+  4. Grid vs Flexbox 选型原则
+  5. 经典布局：圣杯、瀑布流、仪表盘
+
+【Java 程序员的视角】
+  Grid ≈ GridBagLayout 但强大且直观 100 倍。
+  它是一个"二维"布局系统 —— 同时控制行和列。
+
+【运行】浏览器打开此文件
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>06 - Grid 网格布局</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        header {
+            border-bottom: 3px solid #4a90d9;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+        }
+        article {
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        h3 { color: #555; margin-top: 25px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        .label {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        /* ── Grid 容器和项目基础样式 ────────────────── */
+        .grid-container {
+            display: grid;
+            gap: 10px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 100px;
+        }
+        .grid-item {
+            background: #4a90d9;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grid-item:nth-child(odd) { background: #357abd; }
+        .grid-item:nth-child(3n)  { background: #2e6da4; }
+
+        .code-block {
+            background: #263238;
+            color: #aed581;
+            padding: 12px 18px;
+            border-radius: 4px;
+            font-family: "Consolas", monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th { background: #4a90d9; color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📐 Grid —— 二维网格布局</h1>
+        <p>Grid 解决的核心问题：同时控制行和列，做真正的"页面布局"。</p>
+    </header>
+
+    <main>
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 1. fr 单位 + 基础用法                                      -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>1. fr 单位 —— Grid 的灵魂</h2>
+            <!--
+            fr（fraction）= "一份可用空间"
+            类似 Flexbox 的 flex-grow，但作用在列/行模板上
+            -->
+            <p class="label">grid-template-columns: 1fr 1fr 1fr（三等分）</p>
+            <div class="grid-container" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div class="grid-item">1fr</div><div class="grid-item">1fr</div><div class="grid-item">1fr</div>
+            </div>
+
+            <p class="label">grid-template-columns: 2fr 1fr 1fr（第一列占 2 份）</p>
+            <div class="grid-container" style="grid-template-columns: 2fr 1fr 1fr;">
+                <div class="grid-item">2fr</div><div class="grid-item">1fr</div><div class="grid-item">1fr</div>
+            </div>
+
+            <p class="label">固定 + 弹性混合：200px 1fr 1fr</p>
+            <div class="grid-container" style="grid-template-columns: 200px 1fr 1fr;">
+                <div class="grid-item">200px 固定</div><div class="grid-item">1fr 弹性</div><div class="grid-item">1fr 弹性</div>
+            </div>
+
+            <h3>repeat() —— 避免重复写</h3>
+            <p class="label">grid-template-columns: repeat(4, 1fr)（等同于 1fr 1fr 1fr 1fr）</p>
+            <div class="grid-container" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="grid-item">1</div><div class="grid-item">2</div><div class="grid-item">3</div><div class="grid-item">4</div>
+            </div>
+
+            <p class="label">repeat(auto-fill, minmax(150px, 1fr)) —— 自动填充列数！</p>
+            <!--
+            auto-fill + minmax 是 Grid 最强大的组合之一：
+            自动根据容器宽度计算列数，无需 media query！
+            -->
+            <div class="grid-container" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+                <div class="grid-item">卡片 1</div><div class="grid-item">卡片 2</div>
+                <div class="grid-item">卡片 3</div><div class="grid-item">卡片 4</div>
+                <div class="grid-item">卡片 5</div><div class="grid-item">卡片 6</div>
+            </div>
+            <p>💡 缩放浏览器宽度试试 —— 列数自动变化，无需 CSS 媒体查询！</p>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 2. 跨行跨列                                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>2. 项目跨行 / 跨列</h2>
+            <!--
+            用 grid-column 和 grid-row 控制项目的"占地面积"
+            相当于表格的 colspan / rowspan，但强大得多
+            -->
+            <div class="grid-container" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 60px);">
+                <div class="grid-item" style="grid-column: span 2;">span 2 列</div>
+                <div class="grid-item">B</div>
+                <div class="grid-item">C</div>
+                <div class="grid-item" style="grid-row: span 2;">span 2 行</div>
+                <div class="grid-item" style="grid-column: span 2; grid-row: span 2; background:#e74c3c;">跨 2 列 2 行</div>
+                <div class="grid-item">D</div>
+                <div class="grid-item">E</div>
+                <div class="grid-item">F</div>
+            </div>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 3. grid-template-areas —— 最直观的布局方式                -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>3. grid-template-areas —— 用 ASCII 画布局！</h2>
+            <!--
+            grid-template-areas 让布局声明和视觉效果完全对应，
+            是 Grid 最具表现力的特性。
+            -->
+            <p class="label">经典"圣杯"页面布局（header + sidebar + main + footer）</p>
+            <div class="grid-container" style="
+                grid-template-columns: 200px 1fr;
+                grid-template-rows: auto 1fr auto;
+                grid-template-areas:
+                    'header  header'
+                    'sidebar main'
+                    'footer  footer';
+                min-height: 300px;
+                gap: 10px;
+            ">
+                <div class="grid-item" style="grid-area:header; background:#4a90d9;">Header</div>
+                <div class="grid-item" style="grid-area:sidebar; background:#5cb85c;">Sidebar（200px）</div>
+                <div class="grid-item" style="grid-area:main; background:#f0ad4e;">Main Content（弹性）</div>
+                <div class="grid-item" style="grid-area:footer; background:#d9534f;">Footer</div>
+            </div>
+            <p class="code-block">grid-template-areas:<br>    'header  header'<br>    'sidebar main'<br>    'footer  footer';</p>
+            <p>💡 在响应式设计中，只需改变 <code>grid-template-areas</code> 和 <code>grid-template-columns</code>，整个布局瞬间变化！</p>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 4. 对齐方式                                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>4. 对齐方式速查</h2>
+            <table>
+                <thead><tr><th>属性</th><th>作用对象</th><th>方向</th><th>常用值</th></tr></thead>
+                <tbody>
+                    <tr><td>justify-items</td><td>容器 → 所有项目</td><td>行内（水平）</td><td>stretch(默认), center, start, end</td></tr>
+                    <tr><td>align-items</td><td>容器 → 所有项目</td><td>块级（垂直）</td><td>stretch(默认), center, start, end</td></tr>
+                    <tr><td>justify-content</td><td>容器 → 网格整体</td><td>水平</td><td>start, center, space-between...</td></tr>
+                    <tr><td>align-content</td><td>容器 → 网格整体</td><td>垂直</td><td>start, center, space-between...</td></tr>
+                    <tr><td>justify-self</td><td>单个项目</td><td>水平</td><td>覆盖 justify-items</td></tr>
+                    <tr><td>align-self</td><td>单个项目</td><td>垂直</td><td>覆盖 align-items</td></tr>
+                    <tr><td>place-items</td><td>justify-items + align-items 的简写</td><td colspan="2">place-items: center = 单元格内居中</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 5. Grid vs Flexbox 终极对比                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>5. Grid vs Flexbox —— 一张表说清</h2>
+            <table>
+                <thead><tr><th>维度</th><th>Flexbox</th><th>Grid</th></tr></thead>
+                <tbody>
+                    <tr><td>维度</td><td>一维（行 或 列）</td><td>二维（行 和 列）</td></tr>
+                    <tr><td>布局方向</td><td>内容驱动（content-first）</td><td>布局驱动（layout-first）</td></tr>
+                    <tr><td>核心概念</td><td>主轴 + 交叉轴</td><td>行 + 列 + 网格线</td></tr>
+                    <tr><td>元素大小</td><td>flex-grow/shrink/basis</td><td>span / 固定值 / fr</td></tr>
+                    <tr><td>适用场景</td><td>组件内部的小布局、导航栏、工具栏</td><td>页面级大布局、仪表盘、画廊</td></tr>
+                    <tr><td>嵌套使用</td><td colspan="2">两者经常嵌套使用！外层 Grid 定大区，内层 Flexbox 排组件</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+</body>
+</html>

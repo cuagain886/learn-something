@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 15_async —— JavaScript 异步编程
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 为什么 JS 需要异步？—— 单线程 + 事件循环
+  2. 回调函数 → 回调地狱（Callback Hell）
+  3. Promise：异步操作的"承诺"对象
+  4. async / await：用同步风格写异步代码（最推荐！）
+  5. 常用 Promise API：all / allSettled / race / any
+  6. 防抖（Debounce）与节流（Throttle）
+
+【Java 程序员的视角】
+  Promise ≈ CompletableFuture
+  async/await ≈ Java 21 的虚拟线程 / 结构化并发（写法像同步，本质是异步）
+  JS 是单线程的，没有真正的并行 → 但事件循环让它能高效处理并发 I/O
+
+【运行】浏览器打开此文件，F12 → Console 查看输出
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>15 - 异步编程</title>
+    <style>
+        body { font-family:"Microsoft YaHei",sans-serif; max-width:800px; margin:0 auto; padding:20px; line-height:1.8; }
+        header { border-bottom:3px solid #4a90d9; margin-bottom:30px; padding-bottom:10px; }
+        article { background:#fafafa; border-radius:8px; padding:20px; margin-bottom:30px; }
+        h2 { border-bottom:2px solid #eee; padding-bottom:8px; }
+        code { background:#f0f0f0; padding:1px 5px; border-radius:3px; }
+        table { border-collapse:collapse; width:100%; margin:10px 0; }
+        th,td { border:1px solid #ddd; padding:8px 12px; font-size:14px; text-align:left; }
+        th { background:#4a90d9; color:white; }
+        .btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; margin:4px; }
+        .btn-primary { background:#4a90d9; color:white; }
+        .tip { background:#e8f5e9; border-left:4px solid #4caf50; padding:10px 15px; margin:10px 0; }
+        .danger { background:#ffebee; border-left:4px solid #e74c3c; padding:10px 15px; margin:10px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⏳ JavaScript 异步编程</h1>
+        <p>F12 → Console 查看输出（观察日志的时间顺序）</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 为什么 JS 是异步的？—— 单线程 + 事件循环</h2>
+            <p>JS 引擎是<strong>单线程</strong>的（一份代码、一个调用栈），但它能通过<strong>事件循环（Event Loop）</strong>高效处理并发 I/O：</p>
+            <ul>
+                <li>同步代码 → 直接入调用栈执行（阻塞）</li>
+                <li>异步代码 → 交给 Web API（浏览器）→ 回调入任务队列 → 调用栈空后执行</li>
+            </ul>
+            <p>这解释了为什么 <code>setTimeout(fn, 0)</code> 不会立即执行 —— 它必须等当前调用栈清空。</p>
+            <div class="tip"><strong>💡 关键理解：</strong>JS 不会"暂停"等异步结果，而是"注册一个回调，继续执行下面的代码，等结果回来了再调用回调"。</div>
+        </article>
+
+        <article>
+            <h2>2. Promise —— 异步操作的承诺</h2>
+            <p>Promise 有三种状态：<strong>pending</strong>（进行中）→ <strong>fulfilled</strong>（成功）/ <strong>rejected</strong>（失败）。状态一旦改变就不能再变。</p>
+            <table>
+                <thead><tr><th>方法</th><th>作用</th></tr></thead>
+                <tbody>
+                    <tr><td><code>.then(fn)</code></td><td>成功时执行（可以链式调用）</td></tr>
+                    <tr><td><code>.catch(fn)</code></td><td>失败时执行</td></tr>
+                    <tr><td><code>.finally(fn)</code></td><td>无论成功失败都执行</td></tr>
+                    <tr><td><code>Promise.all([...])</code></td><td>全部成功 → 成功；任何一个失败 → 失败</td></tr>
+                    <tr><td><code>Promise.allSettled([...])</code></td><td>等全部完成（不管成败），返回每个的结果</td></tr>
+                    <tr><td><code>Promise.race([...])</code></td><td>返回第一个完成的（不管成败）</td></tr>
+                    <tr><td><code>Promise.any([...])</code></td><td>返回第一个成功的；全失败才 reject</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>3. async / await —— 最优雅的异步写法</h2>
+            <p><strong>async 函数总是返回 Promise</strong>；<strong>await 只能在 async 函数内部使用</strong>，它会"暂停"函数执行直到 Promise 完成。</p>
+            <div class="tip"><strong>💡 推荐：</strong>现代 JS 开发中，<code>async/await</code> 是异步代码的首选风格。只有在需要精细控制并发时才回到 <code>Promise</code> 链式调用。</div>
+            <div class="danger"><strong>⚠️ await 陷阱：</strong>多个独立的 await 顺序执行是浪费！如果两个异步操作互不依赖，用 <code>Promise.all</code> 并行执行。</div>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 15 - 异步编程 ═══\n');
+
+        // ────────────────────────────────────────────────
+        // 演示 1：setTimeout 的异步本质
+        // ────────────────────────────────────────────────
+        console.log('── 1. setTimeout —— 理解事件循环 ──');
+        console.log('A. 同步代码开始');
+        setTimeout(() => console.log('B. setTimeout 0ms 回调（宏任务）'), 0);
+        Promise.resolve().then(() => console.log('C. Promise 回调（微任务，比宏任务优先）'));
+        console.log('D. 同步代码结束');
+        // 输出顺序：A → D → C → B
+        // 微任务（Promise then/catch）比宏任务（setTimeout/setInterval）优先执行！
+
+        // ────────────────────────────────────────────────
+        // 演示 2：Promise 基础
+        // ────────────────────────────────────────────────
+        // 用 setTimeout 模拟异步操作（实际开发中用 fetch / 文件读取等）
+        function delay(ms, value) {
+            return new Promise((resolve, reject) => {
+                if (ms < 0) {
+                    reject(new Error('延迟时间不能为负数'));
+                } else {
+                    setTimeout(() => resolve(value), ms);
+                }
+            });
+        }
+
+        // 模拟一个可能失败的数据获取
+        function fetchUser(id) {
+            return delay(500, { id, name: `User${id}`, email: `user${id}@example.com` });
+        }
+
+        // ────────────────────────────────────────────────
+        // 演示 3：.then() 链式调用 vs 回调地狱
+        // ────────────────────────────────────────────────
+        console.log('\n── 2. Promise 链式调用 ──');
+
+        // ❌ 回调地狱（Callback Hell）：层层嵌套 → "末日金字塔"
+        // fetchUser(1, function(user) {
+        //     fetchPosts(user.id, function(posts) {
+        //         fetchComments(posts[0].id, function(comments) {
+        //             // ... 继续嵌套 ... 深不见底
+        //         });
+        //     });
+        // });
+
+        // ✅ Promise 链式调用：扁平的流式处理
+        fetchUser(1)
+            .then(user => {
+                console.log('  获取到用户:', user);
+                return user.id;  // then 返回的值会被包装成 Promise
+            })
+            .then(userId => delay(300, [`帖子1-用户${userId}`, `帖子2-用户${userId}`]))
+            .then(posts => {
+                console.log('  获取到帖子:', posts);
+                return posts.length;
+            })
+            .catch(err => console.error('  出错:', err.message))
+            .finally(() => console.log('  链式调用完成（无论成败）'));
+
+        // ────────────────────────────────────────────────
+        // 演示 4：async / await
+        // ────────────────────────────────────────────────
+        console.log('\n── 3. async / await ──');
+
+        async function loadUserData(id) {
+            console.log(`  开始加载用户 ${id} 的数据...`);
+            try {
+                const user = await fetchUser(id);
+                console.log('  ✅ 用户数据:', user);
+
+                const posts = await delay(300, [`帖子A`, `帖子B`]);
+                console.log('  ✅ 帖子数据:', posts);
+
+                const comments = await delay(200, ['评论1', '评论2']);
+                console.log('  ✅ 评论数据:', comments);
+
+                return { user, posts, comments };
+            } catch (err) {
+                console.error('  ❌ 加载失败:', err.message);
+                throw err;  // 重新抛出，让调用者也能处理
+            }
+        }
+
+        // async 函数返回 Promise
+        const resultPromise = loadUserData(42);
+        resultPromise.then(data => {
+            console.log('  🎉 全部加载完成:', Object.keys(data));
+        });
+
+        // ────────────────────────────────────────────────
+        // 演示 5：Promise.all vs 顺序 await
+        // ────────────────────────────────────────────────
+        console.log('\n── 4. Promise.all —— 并行执行 ──');
+
+        // ❌ 慢：顺序执行（总时间 = 500 + 300 + 400 = 1200ms）
+        async function sequential() {
+            const start = Date.now();
+            const a = await delay(500, 'A');
+            const b = await delay(300, 'B');
+            const c = await delay(400, 'C');
+            console.log(`  ❌ 顺序执行: ${Date.now() - start}ms`);  // ~1200ms
+            return [a, b, c];
+        }
+
+        // ✅ 快：并行执行（总时间 = max(500, 300, 400) = 500ms）
+        async function parallel() {
+            const start = Date.now();
+            const [a, b, c] = await Promise.all([
+                delay(500, 'A'),
+                delay(300, 'B'),
+                delay(400, 'C'),
+            ]);
+            console.log(`  ✅ 并行执行: ${Date.now() - start}ms`);  // ~500ms
+            return [a, b, c];
+        }
+
+        sequential();
+        parallel();
+
+        // ────────────────────────────────────────────────
+        // 演示 6：Promise.allSettled —— 全等完，不管成败
+        // ────────────────────────────────────────────────
+        console.log('\n── 5. Promise.allSettled ──');
+        Promise.allSettled([
+            delay(300, '成功1'),
+            delay(100, '成功2'),
+            delay(-1, '失败'),  // 会 reject
+        ]).then(results => {
+            results.forEach((r, i) => {
+                if (r.status === 'fulfilled') {
+                    console.log(`  ✅ 操作${i+1}成功:`, r.value);
+                } else {
+                    console.log(`  ❌ 操作${i+1}失败:`, r.reason.message);
+                }
+            });
+        });
+
+        // ────────────────────────────────────────────────
+        // 演示 7：try/catch 对 async/await 的正确姿势
+        // ────────────────────────────────────────────────
+        console.log('\n── 6. async/await 错误处理 ──');
+
+        // ❌ 不好：每个 await 都 try/catch → 啰嗦
+        // ✅ 好：在外层统一 try/catch，或 .catch()
+
+        async function mayFail(shouldFail = false) {
+            if (shouldFail) throw new Error('操作失败');
+            return '成功';
+        }
+
+        // 方式 1：try/catch
+        async function tryCatchStyle() {
+            try {
+                const result = await mayFail(true);
+                console.log(result);
+            } catch (err) {
+                console.log('  try/catch 捕获:', err.message);
+            }
+        }
+
+        // 方式 2：.catch()（更函数式）
+        async function catchStyle() {
+            const result = await mayFail(true).catch(err => {
+                console.log('  .catch() 捕获:', err.message);
+                return '默认值';  // 提供回退值
+            });
+            console.log('  继续执行，结果是:', result);
+        }
+
+        tryCatchStyle();
+        catchStyle();
+
+        console.log('\n✅ 15_async 完成！观察 Console 中异步日志的输出顺序。');
+    </script>
+</body>
+</html>

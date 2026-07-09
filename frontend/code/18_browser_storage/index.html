@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 18_browser_storage —— 浏览器存储
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. localStorage：持久化存储（浏览器关闭不丢失）
+  2. sessionStorage：会话级存储（关闭标签页即丢失）
+  3. Cookie：老牌存储（自动随 HTTP 请求发送）
+  4. IndexedDB：浏览器端的"数据库"（非关系型）
+
+【Java 程序员的视角】
+  localStorage ≈ 一个持久化的 Properties 文件（5-10MB）
+  sessionStorage ≈ HttpSession（标签页级别）
+  Cookie ≈ Cookie（和 Java 的 Cookie 一样，但前端也能读写）
+  IndexedDB ≈ 浏览器内置的轻量 NoSQL 数据库
+
+【运行】浏览器打开此文件，F12 → Application → Storage 查看存储内容
+       在 Console 中运行测试
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>18 - 浏览器存储</title>
+    <style>
+        body { font-family:"Microsoft YaHei",sans-serif; max-width:800px; margin:0 auto; padding:20px; line-height:1.8; }
+        header { border-bottom:3px solid #4a90d9; margin-bottom:30px; padding-bottom:10px; }
+        article { background:#fafafa; border-radius:8px; padding:20px; margin-bottom:30px; }
+        h2 { border-bottom:2px solid #eee; padding-bottom:8px; }
+        code { background:#f0f0f0; padding:1px 5px; border-radius:3px; }
+        table { border-collapse:collapse; width:100%; margin:10px 0; }
+        th,td { border:1px solid #ddd; padding:8px 12px; font-size:14px; text-align:left; }
+        th { background:#4a90d9; color:white; }
+        .btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; margin:4px; }
+        .btn-primary { background:#4a90d9; color:white; }
+        .btn-danger { background:#e74c3c; color:white; }
+        .danger { background:#ffebee; border-left:4px solid #e74c3c; padding:10px 15px; margin:10px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>💾 浏览器存储</h1>
+        <p>F12 → Application → Storage 查看存储内容</p>
+    </header>
+
+    <main>
+        <!-- localStorage 演示 -->
+        <article>
+            <h2>1. localStorage —— 持久化键值对</h2>
+            <p><button class="btn btn-primary" id="ls-save">保存当前时间</button>
+               <button class="btn btn-primary" id="ls-load">读取保存的时间</button>
+               <button class="btn btn-danger" id="ls-clear">清除</button></p>
+            <p id="ls-status" style="font-size:14px;color:#888;"></p>
+            <p>⚠️ localStorage 只能存储字符串。存对象需要 <code>JSON.stringify()</code>，取对象需要 <code>JSON.parse()</code>。</p>
+        </article>
+
+        <!-- sessionStorage 演示 -->
+        <article>
+            <h2>2. sessionStorage —— 会话级键值对</h2>
+            <p><button class="btn btn-primary" id="ss-save">保存</button>
+               <button class="btn btn-primary" id="ss-load">读取</button></p>
+            <p id="ss-status" style="font-size:14px;color:#888;"></p>
+            <p>💡 API 和 localStorage 一模一样（都是 Storage 接口），区别只在于生命周期。</p>
+        </article>
+
+        <!-- 对比表 -->
+        <article>
+            <h2>3. 存储方案对比</h2>
+            <table>
+                <thead><tr><th>特性</th><th>localStorage</th><th>sessionStorage</th><th>Cookie</th><th>IndexedDB</th></tr></thead>
+                <tbody>
+                    <tr><td>容量</td><td>~5-10MB</td><td>~5-10MB</td><td>~4KB</td><td>几百MB+（取决于磁盘）</td></tr>
+                    <tr><td>生命周期</td><td>永久（除非手动删除）</td><td>标签页关闭即丢失</td><td>可设过期时间</td><td>永久</td></tr>
+                    <tr><td>随HTTP发送</td><td>❌</td><td>❌</td><td>✅ 自动</td><td>❌</td></tr>
+                    <tr><td>API 类型</td><td>同步（简单）</td><td>同步（简单）</td><td>document.cookie（难用）</td><td>异步（较复杂）</td></tr>
+                    <tr><td>存储类型</td><td>字符串</td><td>字符串</td><td>字符串</td><td>任意类型（结构化数据）</td></tr>
+                    <tr><td>使用场景</td><td>用户偏好、主题、草稿</td><td>表单分步数据、临时状态</td><td>登录token、跟踪</td><td>离线数据、大量结构化数据</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+
+    <script>
+        'use strict';
+        console.clear();
+        console.log('═══ 18 - 浏览器存储 ═══\n');
+
+        // ═════════════════════════════════════════════════════════
+        // localStorage 演示
+        // ═════════════════════════════════════════════════════════
+        const lsStatus = document.getElementById('ls-status');
+
+        document.getElementById('ls-save').addEventListener('click', () => {
+            const now = new Date().toLocaleString('zh-CN');
+            localStorage.setItem('lastVisit', now);
+
+            // 存储对象需要序列化
+            localStorage.setItem('userSettings', JSON.stringify({
+                theme: 'dark',
+                fontSize: 16,
+                language: 'zh-CN',
+            }));
+
+            lsStatus.textContent = `✅ 已保存: ${now}`;
+            console.log('localStorage 写入:', localStorage.getItem('lastVisit'));
+        });
+
+        document.getElementById('ls-load').addEventListener('click', () => {
+            const lastVisit = localStorage.getItem('lastVisit');
+            const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+
+            if (lastVisit) {
+                lsStatus.textContent = `上次保存: ${lastVisit} | 设置: ${JSON.stringify(settings)}`;
+                console.log('localStorage 读取:', { lastVisit, settings });
+            } else {
+                lsStatus.textContent = '📭 还没有保存过数据';
+            }
+        });
+
+        document.getElementById('ls-clear').addEventListener('click', () => {
+            localStorage.removeItem('lastVisit');
+            localStorage.removeItem('userSettings');
+            // localStorage.clear();  // 清空所有（慎用！）
+            lsStatus.textContent = '🗑️ 已清除';
+        });
+
+        // ═════════════════════════════════════════════════════════
+        // sessionStorage 演示
+        // ═════════════════════════════════════════════════════════
+        const ssStatus = document.getElementById('ss-status');
+
+        document.getElementById('ss-save').addEventListener('click', () => {
+            sessionStorage.setItem('formStep1', JSON.stringify({
+                name: '张三',
+                email: 'zhangsan@example.com',
+                savedAt: new Date().toLocaleTimeString(),
+            }));
+            ssStatus.textContent = '✅ 已保存到 sessionStorage。关闭此标签页后数据会丢失。';
+        });
+
+        document.getElementById('ss-load').addEventListener('click', () => {
+            const data = JSON.parse(sessionStorage.getItem('formStep1') || 'null');
+            if (data) {
+                ssStatus.textContent = `读取到: ${JSON.stringify(data)}`;
+                console.log('sessionStorage 读取:', data);
+            } else {
+                ssStatus.textContent = '📭 没有数据（可能已在另一个标签页中）';
+            }
+        });
+
+        /*
+        ═════════════════════════════════════════════════════════
+         storage 事件 —— 跨标签页通信
+        ═════════════════════════════════════════════════════════
+        当其他标签页修改了 localStorage 时，
+        当前页面会收到 storage 事件。
+        这是最简单的前端跨标签页通信方式。
+        */
+        window.addEventListener('storage', (e) => {
+            console.log('🔔 其他标签页修改了存储:', {
+                key: e.key,
+                oldValue: e.oldValue,
+                newValue: e.newValue,
+                url: e.url,
+            });
+            // 注意：e.key === null 表示 localStorage.clear()
+        });
+
+        /*
+        ═════════════════════════════════════════════════════════
+         Cookie 操作
+        ═════════════════════════════════════════════════════════
+        Cookie 的 API 很丑陋，推荐用库或封装。
+        生产环境中通常用 js-cookie 库：
+          import Cookies from 'js-cookie';
+          Cookies.set('name', 'value', { expires: 7 });
+          Cookies.get('name');
+          Cookies.remove('name');
+        */
+
+        console.log('当前 Cookie:', document.cookie);
+        // document.cookie 只能 set/get 整个字符串，操作繁琐
+
+        console.log('\n✅ 18_browser_storage 完成！');
+        console.log('F12 → Application → Storage 可查看 localStorage/sessionStorage/Cookie 的内容。');
+    </script>
+</body>
+</html>

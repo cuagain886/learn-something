@@ -1,0 +1,173 @@
+body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.8;
+    color: #333;
+}
+
+header {
+    border-bottom: 3px solid #4a90d9;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+}
+
+h1 { margin-bottom: 5px; }
+header p { color: #888; margin-top: 0; }
+
+/* ── form 布局 ───────────────────────────────── */
+form {
+    background: #fafafa;
+    padding: 30px;
+    border-radius: 8px;
+}
+
+fieldset {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+legend {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 0 10px;
+    color: #4a90d9;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+/* ── label 对齐 ───────────────────────────────── */
+.form-group > label:first-child {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* ── input/select/textarea 通用样式 ──────────── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="number"],
+select,
+textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #4a90d9;
+    box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+}
+
+/* ── 验证状态：浏览器会给 :invalid / :valid 伪类 ─ */
+/*
+   ⚠️ 原生验证的视觉反馈在不同浏览器中表现不一致。
+   项目开发中通常用 JS 自定义验证 UI。
+*/
+input:invalid:not(:placeholder-shown) {
+    /* :placeholder-shown 避免空字段一开始就标红 */
+    border-color: #e74c3c;
+}
+
+input:valid:not(:placeholder-shown) {
+    border-color: #2ecc71;
+}
+
+/* ── radio / checkbox ─────────────────────────── */
+.radio-group, .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.radio-label, .checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.radio-label input, .checkbox-label input {
+    width: auto;    /* 覆盖上面的 width:100% */
+}
+
+/* ── 提示文本 ─────────────────────────────────── */
+.hint {
+    display: block;
+    font-size: 13px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* ── 按钮 ─────────────────────────────────────── */
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+button {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary {
+    background: #4a90d9;
+    color: white;
+}
+
+.btn-primary:hover { background: #357abd; }
+
+.btn-secondary {
+    background: #eee;
+    color: #555;
+}
+
+.btn-secondary:hover { background: #ddd; }
+
+/* ── 结果展示 ─────────────────────────────────── */
+#result {
+    margin-top: 30px;
+    padding: 20px;
+    background: #e8f5e9;
+    border-radius: 8px;
+}
+
+#result pre {
+    background: #263238;
+    color: #aed581;
+    padding: 15px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 14px;
+}
+
+footer {
+    margin-top: 30px;
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+a { color: #4a90d9; }

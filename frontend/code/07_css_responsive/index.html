@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 07_css_responsive —— 响应式设计
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. 移动优先（Mobile First）策略
+  2. 媒体查询（@media）的语法与常用断点
+  3. 相对单位：rem / em / vw / vh / % / clamp()
+  4. 响应式图片（srcset / picture）
+  5. 容器查询（@container）—— 2023 年全浏览器支持的革命性特性
+
+【Java 程序员的视角】
+  响应式设计 ≈ 让一套 UI 代码适配不同屏幕尺寸。
+  media query ≈ 条件分支（if 屏幕宽度 > 768px then 用这组样式）
+
+【运行】浏览器打开此文件，缩放窗口观察布局变化
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- ⚠️ viewport meta 是响应式的基石，缺少它移动端会以桌面宽度渲染 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>07 - 响应式设计</title>
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           全局
+           ═══════════════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            margin: 0;
+            padding: 16px;
+            line-height: 1.8;
+        }
+        header {
+            border-bottom: 3px solid #4a90d9;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+        }
+        article {
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+
+        /* ═══════════════════════════════════════════════════════
+           2. 相对单位速查
+           ═══════════════════════════════════════════════════════ */
+        /* ── rem vs em ────────────────────────────────────
+           em  = 相对于父元素的 font-size（会层层叠加，调试噩梦）
+           rem = 相对于根元素 html 的 font-size（推荐！）
+           默认 1rem = 16px（浏览器默认字号）
+        */
+        html { font-size: 16px; }
+
+        .rem-demo { font-size: 1.2rem; }      /* 19.2px */
+        .em-parent { font-size: 20px; }
+        .em-child { font-size: 1.5em; }        /* 30px（相对于 20px 父元素） */
+
+        /* vw / vh：相对于视口宽高
+           100vw = 整个视口宽度
+           100vh = 整个视口高度
+           dvh（动态视口高度）：移动端会扣除地址栏/工具栏，更实用 */
+        .vw-demo {
+            width: 50vw;            /* 视口宽度的一半 */
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           3. clamp() —— 弹性尺寸的终极武器
+           ═══════════════════════════════════════════════════════
+           clamp(min, 理想值, max)：
+           - 屏幕小时用 min（防止太小）
+           - 屏幕大时用 max（防止太大）
+           - 中间范围用理想值（通常是 vw）
+           一行代码替代 min-width + max-width + width 三条规则！
+        */
+        .clamp-demo {
+            font-size: clamp(16px, 4vw, 32px);
+            /* 字体在 16px~32px 之间弹性变化 */
+        }
+        .clamp-box {
+            width: clamp(300px, 60vw, 600px);
+            padding: 16px;
+            background: #c8e6c9;
+            border-radius: 4px;
+            margin: 10px auto;
+            text-align: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           4. 媒体查询 —— 响应式设计的核心
+           ═══════════════════════════════════════════════════════ */
+
+        /* ── 移动优先：基础样式 = 手机版 ──────────────── */
+        .cards {
+            display: grid;
+            grid-template-columns: 1fr;  /* 手机：单列 */
+            gap: 12px;
+        }
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .card:nth-child(1) { border-top: 4px solid #4a90d9; }
+        .card:nth-child(2) { border-top: 4px solid #5cb85c; }
+        .card:nth-child(3) { border-top: 4px solid #f0ad4e; }
+
+        /* 平板（≥ 640px）：两列 */
+        @media (min-width: 640px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        /* 桌面（≥ 1024px）：三列 */
+        @media (min-width: 1024px) {
+            .cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* ── 导航栏响应式 ──────────────────────────── */
+        .navbar {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            background: #263238;
+            border-radius: 4px;
+        }
+        .navbar .brand {
+            color: white;
+            font-weight: bold;
+        }
+        .navbar .links {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .navbar .links a {
+            color: #aed581;
+            text-decoration: none;
+        }
+
+        @media (min-width: 640px) {
+            .navbar {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .navbar .links {
+                flex-direction: row;
+                gap: 20px;
+            }
+        }
+
+        /* ── 利用媒体查询做打印样式 ────────────────── */
+        @media print {
+            header, footer { display: none; }
+            body { font-size: 12pt; color: #000; }
+            article { break-inside: avoid; }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           5. 常用断点速查
+           ═══════════════════════════════════════════════════════ */
+        .breakpoint-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .breakpoint-table th, .breakpoint-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            font-size: 14px;
+            text-align: left;
+        }
+        .breakpoint-table th { background: #4a90d9; color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📱 响应式设计 —— 一套代码适配所有屏幕</h1>
+        <p>核心思想：<strong>移动优先（Mobile First）</strong>—— 先写手机版样式，再用 <code>@media (min-width)</code> 逐级增强。</p>
+    </header>
+
+    <main>
+        <!-- 1. 核心策略 -->
+        <article>
+            <h2>1. 移动优先 vs 桌面优先</h2>
+            <table class="breakpoint-table">
+                <thead><tr><th>策略</th><th>写法</th><th>优点</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong>移动优先（推荐）</strong></td>
+                        <td>基础样式 = 手机 → @media (min-width) 逐级增强</td>
+                        <td>代码更少、移动端性能更好、逻辑更清晰</td>
+                    </tr>
+                    <tr>
+                        <td>桌面优先</td>
+                        <td>基础样式 = 桌面 → @media (max-width) 逐级降级</td>
+                        <td>老项目常用，移动端加载不必要的桌面样式</td>
+                    </tr>
+                </tbody>
+            </table>
+        </article>
+
+        <!-- 2. 相对单位 -->
+        <article>
+            <h2>2. 相对单位：告别 px 思维</h2>
+            <table class="breakpoint-table">
+                <thead><tr><th>单位</th><th>相对于</th><th>使用场景</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>rem</strong></td><td>根元素 html 的 font-size</td><td>字体大小、间距（最推荐）</td></tr>
+                    <tr><td>em</td><td>父元素的 font-size</td><td>组件内部的相对缩放</td></tr>
+                    <tr><td><strong>vw / vh</strong></td><td>视口宽度 / 高度</td><td>全屏布局、hero 区域</td></tr>
+                    <tr><td>%</td><td>父元素的对应属性</td><td>通用比例控制</td></tr>
+                    <tr><td><strong>dvh</strong></td><td>动态视口高度（移动端扣除地址栏）</td><td>移动端全屏（比 vh 准）</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <!-- 3. clamp() 演示 -->
+        <article>
+            <h2>3. clamp() —— 不需要媒体查询的响应式</h2>
+            <p class="clamp-demo">这段文字用 <code>clamp(16px, 4vw, 32px)</code> 控制大小 —— 缩放浏览器试试！</p>
+            <div class="clamp-box">
+                用 <code>clamp(300px, 60vw, 600px)</code> 控制宽度
+            </div>
+            <p>💡 <code>clamp()</code> 不只能用于尺寸，还能用于 <code>line-height</code>、<code>padding</code> 等任何数值属性。</p>
+        </article>
+
+        <!-- 4. 响应式卡片 -->
+        <article>
+            <h2>4. 响应式卡片：单列 → 两列 → 三列</h2>
+            <p>缩放浏览器宽度观察变化（断点：640px、1024px）</p>
+            <div class="cards">
+                <div class="card">
+                    <h3>📖 学习</h3>
+                    <p>HTML / CSS / JS 基础</p>
+                </div>
+                <div class="card">
+                    <h3>🔧 练习</h3>
+                    <p>模仿你喜欢的网站布局</p>
+                </div>
+                <div class="card">
+                    <h3>🚀 项目</h3>
+                    <p>做一个小项目巩固知识</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- 5. 响应式导航栏 -->
+        <article>
+            <h2>5. 响应式导航栏：竖排 → 横排</h2>
+            <nav class="navbar">
+                <div class="brand">My App</div>
+                <div class="links">
+                    <a href="#">首页</a>
+                    <a href="#">产品</a>
+                    <a href="#">关于</a>
+                    <a href="#">联系</a>
+                </div>
+            </nav>
+        </article>
+
+        <!-- 6. 常用断点 -->
+        <article>
+            <h2>6. 常用断点速查</h2>
+            <table class="breakpoint-table">
+                <thead><tr><th>设备</th><th>宽度</th><th>写法</th></tr></thead>
+                <tbody>
+                    <tr><td>手机（竖屏）</td><td>&lt; 640px</td><td>基础样式（不需要 @media）</td></tr>
+                    <tr><td>手机（横屏）/ 小平板</td><td>≥ 640px</td><td>@media (min-width: 640px)</td></tr>
+                    <tr><td>平板</td><td>≥ 768px</td><td>@media (min-width: 768px)</td></tr>
+                    <tr><td>桌面</td><td>≥ 1024px</td><td>@media (min-width: 1024px)</td></tr>
+                    <tr><td>大屏</td><td>≥ 1280px</td><td>@media (min-width: 1280px)</td></tr>
+                </tbody>
+            </table>
+            <p>⚠️ 这些断点只是参考，实际项目应该<strong>根据内容确定断点</strong>，而不是根据设备。当你的内容在某个宽度下看起来"拥挤"时，就在那里加断点。</p>
+        </article>
+    </main>
+</body>
+</html>

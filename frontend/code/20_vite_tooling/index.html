@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 20_vite_tooling —— Vite 前端工程化入门
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. Vite 是什么？为什么比 Webpack 快？
+  2. 项目结构：index.html / src / public / vite.config.js
+  3. 开发服务器（HMR 热更新）
+  4. 构建生产版本
+  5. 环境变量（.env 文件）
+  6. 静态资源导入
+
+【Java 程序员的视角】
+  Vite ≈ Maven/Gradle，但轻量 10 倍。
+  npm install = 下载依赖（相当于 Maven 的 dependency）
+  npm run dev = 开发模式热部署（相当于 Spring Boot DevTools 但快得多）
+  npm run build = 打包成 dist/（相当于 mvn package）
+  vite.config.js = build.gradle / pom.xml
+
+【运行】
+  cd 20_vite_tooling
+  npm install
+  npm run dev
+  浏览器会自动打开 http://localhost:3000
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/vite.svg">
+    <title>20 - Vite 工程化入门</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        header {
+            border-bottom: 3px solid #4a90d9;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+        }
+        article {
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            font-size: 14px;
+            text-align: left;
+        }
+        th { background: #4a90d9; color: white; }
+        .tip {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 10px 15px;
+            margin: 10px 0;
+        }
+        .card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+        .feature-icon { font-size: 2em; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⚡ Vite —— 下一代前端构建工具</h1>
+        <p>由 Vue.js 作者尤雨溪开发，是目前前端开发的事实标准。</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>1. 为什么选 Vite？</h2>
+            <div class="grid">
+                <div class="card">
+                    <div class="feature-icon">⚡</div>
+                    <strong>极速冷启动</strong>
+                    <p style="color:#888;font-size:14px;">基于 ESM，不需要打包就能启动开发服务器</p>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">🔥</div>
+                    <strong>HMR 热更新</strong>
+                    <p style="color:#888;font-size:14px;">修改代码后页面毫秒级更新，不丢失状态</p>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">📦</div>
+                    <strong>按需编译</strong>
+                    <p style="color:#888;font-size:14px;">只编译浏览器请求的模块</p>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">🛠️</div>
+                    <strong>开箱即用</strong>
+                    <p style="color:#888;font-size:14px;">TS/JSX/CSS/Sass 无需配置</p>
+                </div>
+            </div>
+        </article>
+
+        <article>
+            <h2>2. Vite vs Webpack 对比</h2>
+            <table>
+                <thead><tr><th>特性</th><th>Vite</th><th>Webpack</th></tr></thead>
+                <tbody>
+                    <tr><td>开发服务器启动</td><td>⚡ 即时（ESM native）</td><td>🐢 需要先打包</td></tr>
+                    <tr><td>HMR 速度</td><td>极快（与项目大小无关）</td><td>随项目增大变慢</td></tr>
+                    <tr><td>构建引擎</td><td>Rollup（高效）</td><td>自研（复杂）</td></tr>
+                    <tr><td>配置复杂度</td><td>简单</td><td>复杂（loader/plugin 体系）</td></tr>
+                    <tr><td>生态成熟度</td><td>新（2021+）</td><td>老（2014+，生态最丰富）</td></tr>
+                    <tr><td>使用趋势</td><td>2024+ 事实标准</td><td>老项目仍大量使用</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>3. 项目结构</h2>
+            <pre>/项目根目录
+├── index.html          ← 入口页面（Vite 要求它在根目录！）
+├── package.json        ← 依赖声明 + 脚本（类似 pom.xml）
+├── vite.config.js      ← Vite 配置（类似 build.gradle）
+├── src/                ← 源代码
+│   ├── main.js         ← 应用入口
+│   ├── components/     ← 组件
+│   └── styles/         ← CSS
+├── public/             ← 静态资源（不处理，直接复制到 dist）
+└── .env / .env.production  ← 环境变量</pre>
+        </article>
+
+        <article>
+            <h2>4. 常用命令</h2>
+            <table>
+                <thead><tr><th>命令</th><th>作用</th><th>Maven/Gradle 对应</th></tr></thead>
+                <tbody>
+                    <tr><td><code>npm install</code></td><td>安装依赖</td><td>mvn dependency:resolve</td></tr>
+                    <tr><td><code>npm run dev</code></td><td>启动开发服务器（HMR）</td><td>mvn spring-boot:run</td></tr>
+                    <tr><td><code>npm run build</code></td><td>构建生产包到 dist/</td><td>mvn package</td></tr>
+                    <tr><td><code>npm run preview</code></td><td>本地预览生产构建</td><td>（无直接对应）</td></tr>
+                    <tr><td><code>npm install --save-dev vite</code></td><td>添加开发依赖</td><td>scope: test</td></tr>
+                    <tr><td><code>npm install --save lodash</code></td><td>添加运行时依赖</td><td>scope: compile</td></tr>
+                </tbody>
+            </table>
+        </article>
+
+        <article>
+            <h2>5. Vite 的特色功能</h2>
+            <h3>静态资源导入</h3>
+            <pre>// JS 中导入图片（构建后会返回优化后的 URL）
+import logoUrl from './logo.svg';
+
+// 导入 JSON（自动解析为对象）
+import data from './data.json';
+
+// 导入 CSS（自动注入到页面）
+import './style.css';</pre>
+
+            <h3>环境变量</h3>
+            <pre>.env                  # 所有环境
+.env.development      # npm run dev
+.env.production       # npm run build
+
+# 只有 VITE_ 前缀的变量会暴露给客户端
+VITE_API_URL=https://api.example.com</pre>
+            <div class="tip">
+                <strong>💡 与 Java 的对比：</strong>
+                Vite 的 <code>.env</code> ≈ Spring Boot 的 <code>application.yml</code>，
+                但只有 <code>VITE_</code> 前缀的变量能在前端代码中通过 <code>import.meta.env.VITE_XXX</code> 访问。
+            </div>
+        </article>
+
+        <article>
+            <h2>6. 下一步：创建你的第一个 Vite 项目</h2>
+            <pre># 使用 Vite 官方脚手架创建项目
+npm create vite@latest my-app -- --template vanilla
+
+# 或使用你喜欢的框架模板
+npm create vite@latest my-react-app -- --template react
+npm create vite@latest my-vue-app -- --template vue</pre>
+            <p>本课程目录就是一个最小的 Vite + Vanilla JS 项目，可以直接运行体验。</p>
+        </article>
+    </main>
+
+    <!-- Vite 会处理 ES Module 导入 -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

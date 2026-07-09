@@ -1,0 +1,222 @@
+{
+  "main": {
+    "id": "30e54989ae040145",
+    "type": "split",
+    "children": [
+      {
+        "id": "58e82ee6f75f847a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5d3ff45463f88fcc",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "python/langchain/knowledge/01_architecture.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "01_architecture"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "6380f669ff938606",
+    "type": "split",
+    "children": [
+      {
+        "id": "81893fb622f59ec0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "dffa3789531a7508",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "34217895bd12a41e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "3a0064e317cb1585",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "5f3134d5d67bfe42",
+    "type": "split",
+    "children": [
+      {
+        "id": "2423284fc210421a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "33b6bf0a84cb7a49",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "24c723d66bd1736f",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "821243a65fb9d4e5",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "ddf0783b8779b887",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "d88bac733c992c13",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "5d3ff45463f88fcc",
+  "lastOpenFiles": [
+    "java/knowledge/README.md",
+    "java/knowledge/01_jvm_memory.md",
+    "java/code/README.md",
+    "java/code/20_testing/target/classes",
+    "java/code/20_testing/target",
+    "python/langchain/knowledge/01_architecture.md",
+    "java/knowledge/12_interview_traps.md",
+    "java/knowledge/12_interview_traps.md.tmp.4196.d0134e0c2d4a",
+    "java/code/20_testing/target/calc-1.0.0.jar",
+    "java/code/20_testing/target/maven-archiver/pom.properties",
+    "java/code/20_testing/target/maven-archiver",
+    "java/code/20_testing/target/surefire-reports/TEST-calc.CalculatorTest.xml",
+    "java/code/20_testing/target/surefire-reports/calc.CalculatorTest.txt",
+    "java/code/20_testing/target/surefire-reports/TEST-calc.CalculatorTest$EdgeCases.xml",
+    "java/code/20_testing/target/surefire-reports/calc.CalculatorTest$EdgeCases.txt",
+    "java/knowledge/11_collections_source.md",
+    "java/knowledge/10_string.md",
+    "java/knowledge/09_aqs.md",
+    "java/knowledge/08_threadpool.md",
+    "java/knowledge/07_concurrenthashmap.md",
+    "java/knowledge/06_hashmap.md",
+    "java/knowledge/05_synchronized.md",
+    "java/knowledge/04_jmm.md",
+    "python/knowledge/01_object_model.md",
+    "java/knowledge/03_gc.md",
+    "agent/agent-core/02-工具使用ToolUse.md",
+    "agent/agent-core/01-Agent循环与ReAct.md",
+    "agent/agent-core/00-Agent核心学习总览.md",
+    "agent/context-engineering/05-工程实践与反模式.md",
+    "agent/context-engineering/04-上下文管理技巧.md",
+    "agent/context-engineering/03-Agent记忆系统.md",
+    "agent/context-engineering/02-上下文工程基础.md",
+    "agent/context-engineering/01-MCP模型上下文协议.md",
+    "agent/context-engineering/00-MCP与上下文工程学习总览.md",
+    "agent/rag/07-RAG评估与可观测性.md",
+    "agent/rag/06-高级RAG架构.md"
+  ]
+}

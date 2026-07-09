@@ -1,0 +1,14 @@
+{
+  "name": "20-vite-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vite 前端工程化入门",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

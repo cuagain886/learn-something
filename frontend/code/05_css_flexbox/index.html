@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+ 05_css_flexbox —— Flexbox 弹性布局
+═══════════════════════════════════════════════════════════════════
+
+【本节学什么】
+  1. Flex 容器的 6 个属性：direction / wrap / justify-content / align-items / align-content / gap
+  2. Flex 项目的 3 个核心属性：flex-grow / flex-shrink / flex-basis
+  3. 常见布局模式：居中、两端对齐、圣杯布局、等宽列
+  4. Flexbox 的实际应用场景
+
+【Java 程序员的视角】
+  Flexbox ≈ BoxLayout + SpringLayout 的进化版。
+  它是一个"一维"布局系统 —— 沿一条主轴排列子元素。
+  处理"一行/一列中元素的弹性分配"就用它。
+
+【运行】浏览器打开此文件
+
+【参考】CSS-Tricks Flexbox 图解：https://css-tricks.com/snippets/css/a-guide-to-flexbox/
+-->
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>05 - Flexbox 弹性布局</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        header {
+            border-bottom: 3px solid #4a90d9;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+        }
+
+        /* ── Flex 容器基础样式 ─────────────────────── */
+        .flex-container {
+            display: flex;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 80px;
+            gap: 10px;  /* 项目之间的间距（推荐用 gap，而不是 margin） */
+        }
+        .flex-item {
+            background: #4a90d9;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            min-width: 40px;
+        }
+        .flex-item:nth-child(odd) { background: #357abd; }
+        .flex-item:nth-child(3n)  { background: #2e6da4; }
+
+        article {
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        h3 { color: #555; margin-top: 25px; }
+        code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+        .label {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        /* ── 实用布局演示 ──────────────────────────── */
+        .demo-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .demo-center div {
+            background: #4a90d9;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 4px;
+        }
+
+        .demo-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: #263238;
+            color: white;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .demo-nav .logo { font-weight: bold; font-size: 1.2em; }
+        .demo-nav .links { display: flex; gap: 20px; }
+        .demo-nav .links a { color: #aed581; text-decoration: none; }
+
+        .demo-cards {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        .demo-cards .card {
+            flex: 1;            /* 每个卡片等分空间 */
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-cards .card h4 { margin-top: 0; }
+
+        .code-block {
+            background: #263238;
+            color: #aed581;
+            padding: 12px 18px;
+            border-radius: 4px;
+            font-family: "Consolas", monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔀 Flexbox —— 一维弹性布局</h1>
+        <p>Flexbox 解决的核心问题：在一个方向上灵活分配空间。</p>
+    </header>
+
+    <main>
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 1. 容器属性                                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>1. 容器属性（加在 display:flex 的父元素上）</h2>
+
+            <h3>flex-direction —— 主轴方向</h3>
+            <!--
+            主轴（main axis）= 元素排列的方向
+            交叉轴（cross axis）= 垂直于主轴的方向
+            flex-direction 决定了谁是主轴。
+            -->
+            <p class="label">flex-direction: row（默认值，从左到右）</p>
+            <div class="flex-container" style="flex-direction:row;">
+                <div class="flex-item">1</div><div class="flex-item">2</div><div class="flex-item">3</div>
+            </div>
+
+            <p class="label">flex-direction: column（从上到下）</p>
+            <div class="flex-container" style="flex-direction:column;">
+                <div class="flex-item">1</div><div class="flex-item">2</div><div class="flex-item">3</div>
+            </div>
+
+            <h3>justify-content —— 主轴对齐</h3>
+            <p class="label">justify-content: flex-start（默认，靠左）</p>
+            <div class="flex-container" style="justify-content:flex-start;">
+                <div class="flex-item">1</div><div class="flex-item">2</div><div class="flex-item">3</div>
+            </div>
+            <p class="label">justify-content: center（居中）→ 最常用的水平居中方式之一</p>
+            <div class="flex-container" style="justify-content:center;">
+                <div class="flex-item">1</div><div class="flex-item">2</div><div class="flex-item">3</div>
+            </div>
+            <p class="label">justify-content: space-between（两端对齐，中间均分）→ 导航栏标配</p>
+            <div class="flex-container" style="justify-content:space-between;">
+                <div class="flex-item">1</div><div class="flex-item">2</div><div class="flex-item">3</div>
+            </div>
+
+            <h3>align-items —— 交叉轴对齐</h3>
+            <p class="label">align-items: stretch（默认，拉伸填满容器高度）</p>
+            <div class="flex-container" style="align-items:stretch; height:100px;">
+                <div class="flex-item" style="padding:5px;">短</div>
+                <div class="flex-item">中等内容</div>
+                <div class="flex-item" style="padding:20px;">长内容</div>
+            </div>
+            <p class="label">align-items: center（垂直居中）</p>
+            <div class="flex-container" style="align-items:center; height:100px;">
+                <div class="flex-item" style="padding:5px;">短</div>
+                <div class="flex-item">中等内容</div>
+                <div class="flex-item" style="padding:20px;">长内容</div>
+            </div>
+
+            <h3>flex-wrap —— 换行</h3>
+            <p class="label">flex-wrap: wrap（放不下就换行）</p>
+            <div class="flex-container" style="flex-wrap:wrap;">
+                <div class="flex-item" style="width:200px;">1 (200px)</div>
+                <div class="flex-item" style="width:200px;">2 (200px)</div>
+                <div class="flex-item" style="width:200px;">3 (200px)</div>
+                <div class="flex-item" style="width:200px;">4 (200px)</div>
+                <div class="flex-item" style="width:200px;">5 (200px)</div>
+            </div>
+
+            <h3>gap —— 项目间距</h3>
+            <p>💡 用 <code>gap</code> 控制元素间距，而不是在每个元素上设置 <code>margin</code>。清晰且无"最后一个元素多余 margin"问题。</p>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 2. 项目属性                                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>2. 项目属性（加在 Flex 容器的子元素上）</h2>
+
+            <h3>flex-basis / flex-grow / flex-shrink</h3>
+            <!--
+            flex-basis：项目的初始大小（= width/height 但优先于 width/height）
+            flex-grow：如果有剩余空间，该项目分多少（默认 0，不增长）
+            flex-shrink：如果空间不够，该项目缩多少（默认 1，等比缩小）
+            flex: 1 = flex-grow:1; flex-shrink:1; flex-basis:0
+            这是最常用的简写！
+            -->
+            <p class="label">flex: 1（等分空间）</p>
+            <div class="flex-container">
+                <div class="flex-item" style="flex:1;">flex:1</div>
+                <div class="flex-item" style="flex:1;">flex:1</div>
+                <div class="flex-item" style="flex:1;">flex:1</div>
+            </div>
+
+            <p class="label">中间弹性：flex:2 分 2 份，左右 flex:1 各分 1 份</p>
+            <div class="flex-container">
+                <div class="flex-item" style="flex:1;">flex:1</div>
+                <div class="flex-item" style="flex:2;">flex:2（占 2/4）</div>
+                <div class="flex-item" style="flex:1;">flex:1</div>
+            </div>
+
+            <h3>align-self —— 单个项目的交叉轴对齐</h3>
+            <p class="label">覆盖容器的 align-items 设置</p>
+            <div class="flex-container" style="align-items:center; height:120px;">
+                <div class="flex-item">center</div>
+                <div class="flex-item" style="align-self:flex-start;">flex-start</div>
+                <div class="flex-item" style="align-self:flex-end;">flex-end</div>
+                <div class="flex-item" style="align-self:stretch;">stretch</div>
+            </div>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 3. 实战布局                                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>3. 实战：三种最常用的 Flex 布局</h2>
+
+            <h3>① 完美居中</h3>
+            <div class="demo-center">
+                <div>水平和垂直都居中！</div>
+            </div>
+            <p class="code-block">
+.center { display: flex; justify-content: center; align-items: center; }</p>
+
+            <h3>② 导航栏</h3>
+            <div class="demo-nav">
+                <div class="logo">Logo</div>
+                <nav class="links">
+                    <a href="#">首页</a><a href="#">产品</a><a href="#">关于</a>
+                </nav>
+            </div>
+            <p class="code-block">
+.nav { display: flex; justify-content: space-between; align-items: center; }
+.nav .links { display: flex; gap: 20px; }</p>
+
+            <h3>③ 等分卡片</h3>
+            <div class="demo-cards">
+                <div class="card">
+                    <h4>卡片 1</h4>
+                    <p>Flexbox 让等分宽度变得极其简单。</p>
+                </div>
+                <div class="card">
+                    <h4>卡片 2</h4>
+                    <p>无论内容多少，所有卡片宽度一致。</p>
+                </div>
+                <div class="card">
+                    <h4>卡片 3</h4>
+                    <p>不需要 calc()、不需要百分比，just flex: 1。</p>
+                </div>
+            </div>
+            <p class="code-block">
+.cards { display: flex; gap: 15px; }
+.card { flex: 1; }  /* 每个卡片等分空间 */</p>
+        </article>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 4. Flex vs Grid 选择指南                                  -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <article>
+            <h2>4. Flexbox vs Grid：什么时候用哪个？</h2>
+            <table>
+                <thead><tr><th>场景</th><th>推荐</th><th>原因</th></tr></thead>
+                <tbody>
+                    <tr><td>导航栏、工具栏</td><td>Flexbox</td><td>一维排列，弹性空间</td></tr>
+                    <tr><td>卡片列表（自动换行）</td><td>Flexbox</td><td>flex-wrap 自动处理换行</td></tr>
+                    <tr><td>整体页面布局</td><td>Grid</td><td>二维控制行列，更清晰</td></tr>
+                    <tr><td>仪表盘/图片画廊</td><td>Grid</td><td>需要精确控制行列</td></tr>
+                    <tr><td>表单行内的 label+input</td><td>Flexbox</td><td>一维排列，algin-items 对齐</td></tr>
+                    <tr><td>复杂的响应式布局</td><td>Grid</td><td>grid-template-areas 直观</td></tr>
+                </tbody>
+            </table>
+            <p><strong>💡 经验法则：</strong>一维用 Flex，二维用 Grid。不确定时先 Flex → 发现需要控制行又控制列时再换 Grid。</p>
+        </article>
+    </main>
+</body>
+</html>
