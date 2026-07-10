@@ -47,6 +47,9 @@ func (e *RetryExecutor) Execute(ctx context.Context, payload string) (string, er
 	}
 	delay := e.Config.BaseDelay
 	for attempt := 1; attempt <= e.Config.MaxAttempts; attempt++ {
+		if cause := context.Cause(ctx); cause != nil {
+			return "", cause
+		}
 		jobs.RecordAttempt(ctx)
 		result, err := e.Next.Execute(ctx, payload)
 		if err == nil {

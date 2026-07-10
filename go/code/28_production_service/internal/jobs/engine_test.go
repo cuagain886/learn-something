@@ -122,6 +122,28 @@ func TestEngineMarksTaskTimeoutAsFailed(t *testing.T) {
 	}
 }
 
+func TestEngineDoesNotAcceptSuccessAfterTaskDeadline(t *testing.T) {
+	engine, err := NewEngine(context.Background(), 1, 1, 20*time.Millisecond,
+		executorFunc(func(ctx context.Context, _ string) (string, error) {
+			<-ctx.Done()
+			return "late success", nil
+		}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, err := engine.Submit(context.Background(), "slow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed := waitForStatus(t, engine, job.ID, Failed)
+	if !strings.Contains(failed.Error, context.DeadlineExceeded.Error()) {
+		t.Fatalf("failed job error = %q, want deadline exceeded", failed.Error)
+	}
+	if err := engine.Shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestEngineConvertsExecutorPanicToFailure(t *testing.T) {
 	originalLogger := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))

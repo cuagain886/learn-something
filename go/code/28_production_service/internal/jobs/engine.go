@@ -171,7 +171,12 @@ func (e *Engine) execute(item workItem) {
 	ctx, cancel := context.WithTimeout(e.ctx, e.taskTimeout)
 	ctx, attempts := WithAttemptCounter(ctx)
 	result, err := e.executeSafely(ctx, item.payload)
+	taskCause := context.Cause(ctx)
 	cancel()
+	if err == nil && taskCause != nil {
+		result = ""
+		err = taskCause
+	}
 	attemptCount := attempts.Load()
 	if attemptCount == 0 {
 		attemptCount = 1

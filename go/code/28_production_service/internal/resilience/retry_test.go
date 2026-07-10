@@ -114,3 +114,25 @@ func TestRetryExecutorRejectsInvalidConfiguration(t *testing.T) {
 		}
 	}
 }
+
+func TestRetryExecutorRechecksContextBeforeEveryAttempt(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	attempts := 0
+	executor := &RetryExecutor{
+		Next: executorFunc(func(context.Context, string) (string, error) {
+			attempts++
+			return "", temporaryError{"temporary"}
+		}),
+		Config: RetryConfig{MaxAttempts: 3, BaseDelay: time.Millisecond},
+		Sleep: func(context.Context, time.Duration) error {
+			cancel()
+			return nil
+		},
+	}
+	if _, err := executor.Execute(ctx, ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Execute() = %v, want context.Canceled", err)
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", attempts)
+	}
+}

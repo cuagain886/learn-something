@@ -36,9 +36,30 @@
 | 11 | [性能优化与 pprof](11_performance_pprof.md) | CPU/内存/阻塞分析、benchmark、常见性能反模式、逃逸优化实战 |
 | 12 | [高频面试陷阱题集锦](12_interview_traps.md) | ⚠️ 30+ 道经典手撕题（输出什么？为什么？怎么改）+ 答案解析 |
 
+### 第四部分：核心八讲——底层验证与生产实践（深入 ⭐⭐⭐）
+
+| # | 文档 | 对应代码 | 核心考点 |
+|---|------|---------|---------|
+| 13 | [Go 内存模型](13_memory_model.md) | [`21_memory_model`](../code/21_memory_model) | happens-before、DRF-SC、atomic.Pointer、CAS/ABA、伪共享 |
+| 14 | [结构化并发](14_structured_concurrency.md) | [`22_structured_concurrency`](../code/22_structured_concurrency) | 生命周期树、首错取消、CancelCause、panic 边界、泄漏治理 |
+| 15 | [背压与有界 Pipeline](15_backpressure_pipeline.md) | [`23_backpressure_pipeline`](../code/23_backpressure_pipeline) | Little's Law、三种背压策略、关闭权、Fan-out/Fan-in |
+| 16 | [HTTP 与 runtime netpoll](16_http_netpoll.md) | [`24_http_transport_netpoll`](../code/24_http_transport_netpoll) | Transport、连接复用、分层超时、httptrace、跨平台 netpoll |
+| 17 | [反射、泛型与 unsafe](17_reflect_unsafe.md) | [`25_reflect_unsafe`](../code/25_reflect_unsafe) | addressable/settable、布局、Pointer/uintptr、零拷贝所有权 |
+| 18 | [编译器与 SSA](18_compiler_ssa.md) | [`26_compiler_ssa`](../code/26_compiler_ssa) | 逃逸、内联、BCE、SSA、汇编、去虚拟化 |
+| 19 | [高级测试与性能诊断](19_advanced_testing_profiling.md) | [`27_advanced_testing_profiling`](../code/27_advanced_testing_profiling) | 属性/Golden/Fuzz、Race、可靠 Benchmark、pprof、trace |
+| 20 | [生产级并发 HTTP 服务](20_production_service.md) | [`28_production_service`](../code/28_production_service) | 限流、背压、重试、熔断、错误映射、可观测性、优雅停机 |
+
 ---
 
 ## 🎯 推荐学习路线
+
+整个仓库分三层：
+
+```text
+代码基础 01–20
+  → 底层专题 01–12
+    → 核心八讲 13–20（对应代码 21–28）
+```
 
 ```
 面试冲刺（2 周）          系统进阶（1 个月）
@@ -48,6 +69,14 @@ Day 4-5  : 04 05         再攻 06 07 08（运行时，最能体现深度）
 Day 6-8  : 06 07 ⭐重点   然后 09 10（并发是 Go 的招牌）
 Day 9-10 : 08 09         最后 11 12（实战与查漏补缺）
 Day 11-14: 10 11 12 刷题  ★ 每篇末尾的面试题都要能脱口而出
+```
+
+核心八讲建议按以下顺序学习：
+
+```text
+13 内存模型 → 14 结构化并发 → 15 背压
+16 HTTP/netpoll → 18 编译器 → 17 反射/unsafe
+19 测试诊断 → 20 综合服务
 ```
 
 **面试官最爱问的 5 个"灵魂拷问"**（在对应文档里都有详解）：
@@ -86,7 +115,7 @@ GODEBUG=schedtrace=1000 go run main.go # 每秒打印调度器状态
 
 ## ⚠️ 关于版本
 
-本文档基于 **Go 1.21+**（仓库环境为 Go 1.26）。涉及版本差异的地方会特别标注，常见的几个分水岭：
+本文档基础部分适用于 **Go 1.21+**，核心八讲以仓库当前 **Go 1.26.4** 为目标版本。涉及版本差异的地方会特别标注，常见的几个分水岭：
 
 - **Go 1.13**：错误包装 `%w` / `errors.Is/As`
 - **Go 1.14**：基于信号的**异步抢占式调度**（解决了死循环 goroutine 饿死调度器的问题）
@@ -94,5 +123,7 @@ GODEBUG=schedtrace=1000 go run main.go # 每秒打印调度器状态
 - **Go 1.18**：泛型；切片扩容阈值从 1024 调整、新增 `any`
 - **Go 1.21**：`min`/`max`/`clear` 内置函数、`slices`/`maps`/`cmp` 标准库
 - **Go 1.22**：循环变量每轮重新声明（修复了著名的闭包捕获坑）
+- **Go 1.24**：`testing.B.Loop` 成为推荐 Benchmark 循环写法
+- **Go 1.25**：`sync.WaitGroup.Go` 简化无返回值并发任务的计数样板代码
 
-> 面试时如果被问到"你用的哪个版本，有什么新特性"，上面这些是加分项。
+> runtime/compiler 私有结构、内联成本和汇编会随版本与架构变化。面试回答应先讲稳定语义，再说明当前版本实现，并用官方规范、源码或工具输出支撑。
