@@ -238,7 +238,7 @@ func BenchmarkPaddedCounters(b *testing.B)
 
 伪共享基准内部使用 `type Counters struct{ Left, Right atomic.Uint64 }`，填充版本把两个计数器分别包在含 64-byte 教学填充的结构中；文档明确说明 cache line 大小依架构而异，填充仅用于观察趋势。
 
-`main.go` 顺序演示错误发布概念、锁同步、channel 同步、原子快照、CAS 重试和伪共享；错误发布只说明“行为未定义/存在数据竞争”，不声称每次都输出固定错误结果。
+`main.go` 顺序演示错误发布概念、锁同步、channel 同步、原子快照、CAS 重试和伪共享；错误发布只说明“存在数据竞争且没有同步可见性保证”，不把它描述为 C/C++ 式完全未定义行为，也不声称每次都输出固定错误结果。
 
 - [ ] **Step 6: 编写底层文档**
 
@@ -251,7 +251,7 @@ Run:
 ```powershell
 gofmt -w (Get-ChildItem ./21_memory_model -Filter *.go).FullName
 go test -race ./21_memory_model
-go test -run=^$ -bench=. -benchmem ./21_memory_model
+go test -run='^$' -bench=. -benchmem ./21_memory_model
 go vet ./21_memory_model
 ```
 
@@ -357,7 +357,7 @@ Run:
 ```powershell
 gofmt -w (Get-ChildItem ./22_structured_concurrency -Filter *.go).FullName
 go test -race ./22_structured_concurrency
-go test -run=^$ -bench=. -benchmem ./22_structured_concurrency
+go test -run='^$' -bench=. -benchmem ./22_structured_concurrency
 go vet ./22_structured_concurrency
 ```
 
@@ -655,7 +655,7 @@ Run:
 ```powershell
 go test -race ./27_advanced_testing_profiling
 go test -fuzz=Fuzz -fuzztime=10s ./27_advanced_testing_profiling
-go test -run=^$ -bench=. -benchmem ./27_advanced_testing_profiling
+go test -run='^$' -bench=. -benchmem ./27_advanced_testing_profiling
 ```
 
 文档覆盖测试金字塔、属性、Fuzz、Race 边界、可靠 Benchmark、六类 Profile、trace、排障闭环和 12 道面试题。
@@ -857,7 +857,7 @@ Run:
 
 ```powershell
 go test -race ./28_production_service/...
-go test -run=^$ -bench=. -benchmem ./28_production_service/...
+go test -run='^$' -bench=. -benchmem ./28_production_service/...
 go vet ./28_production_service/...
 ```
 
@@ -917,7 +917,7 @@ Run:
 ```powershell
 go test -fuzz=Fuzz -fuzztime=10s ./27_advanced_testing_profiling
 go test -gcflags=all=-d=checkptr=2 ./25_reflect_unsafe
-go test -run=^$ -bench=. -benchmem ./21_memory_model ./23_backpressure_pipeline ./25_reflect_unsafe ./26_compiler_ssa ./27_advanced_testing_profiling ./28_production_service/...
+go test -run='^$' -bench=. -benchmem ./21_memory_model ./23_backpressure_pipeline ./25_reflect_unsafe ./26_compiler_ssa ./27_advanced_testing_profiling ./28_production_service/...
 ```
 
 Expected: Fuzz 和 checkptr 通过；所有列出的模块至少输出一个 Benchmark。
