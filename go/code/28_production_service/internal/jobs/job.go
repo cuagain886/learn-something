@@ -1,7 +1,9 @@
 package jobs
 
 import (
+	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,4 +36,26 @@ type Job struct {
 	StartedAt  time.Time `json:"started_at,omitempty"`
 	FinishedAt time.Time `json:"finished_at,omitempty"`
 	Attempts   int       `json:"attempts"`
+}
+
+type attemptCounterKey struct{}
+
+type AttemptCounter struct {
+	value atomic.Int32
+}
+
+func WithAttemptCounter(ctx context.Context) (context.Context, *AttemptCounter) {
+	counter := &AttemptCounter{}
+	return context.WithValue(ctx, attemptCounterKey{}, counter), counter
+}
+
+func RecordAttempt(ctx context.Context) {
+	counter, _ := ctx.Value(attemptCounterKey{}).(*AttemptCounter)
+	if counter != nil {
+		counter.value.Add(1)
+	}
+}
+
+func (c *AttemptCounter) Load() int {
+	return int(c.value.Load())
 }

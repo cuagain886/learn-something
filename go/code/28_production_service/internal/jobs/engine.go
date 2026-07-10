@@ -166,15 +166,20 @@ func (e *Engine) execute(item workItem) {
 	e.store.Update(item.id, func(job *Job) {
 		job.Status = Running
 		job.StartedAt = time.Now().UTC()
-		job.Attempts = 1
 	})
 
 	ctx, cancel := context.WithTimeout(e.ctx, e.taskTimeout)
+	ctx, attempts := WithAttemptCounter(ctx)
 	result, err := e.executeSafely(ctx, item.payload)
 	cancel()
+	attemptCount := attempts.Load()
+	if attemptCount == 0 {
+		attemptCount = 1
+	}
 	finishedAt := time.Now().UTC()
 	e.store.Update(item.id, func(job *Job) {
 		job.FinishedAt = finishedAt
+		job.Attempts = attemptCount
 		switch {
 		case err == nil:
 			job.Status = Succeeded
