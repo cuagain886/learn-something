@@ -654,7 +654,8 @@ Run:
 
 ```powershell
 go test -race ./27_advanced_testing_profiling
-go test -fuzz=Fuzz -fuzztime=10s ./27_advanced_testing_profiling
+go test -fuzz=FuzzFrameRoundTrip -fuzztime=10s ./27_advanced_testing_profiling
+go test -fuzz=FuzzDecodeNeverPanics -fuzztime=10s ./27_advanced_testing_profiling
 go test -run='^$' -bench=. -benchmem ./27_advanced_testing_profiling
 ```
 
@@ -915,7 +916,8 @@ Expected: 三条命令退出 0；race 输出无 `DATA RACE`。
 Run:
 
 ```powershell
-go test -fuzz=Fuzz -fuzztime=10s ./27_advanced_testing_profiling
+go test -fuzz=FuzzFrameRoundTrip -fuzztime=10s ./27_advanced_testing_profiling
+go test -fuzz=FuzzDecodeNeverPanics -fuzztime=10s ./27_advanced_testing_profiling
 go test -gcflags=all=-d=checkptr=2 ./25_reflect_unsafe
 go test -run='^$' -bench=. -benchmem ./21_memory_model ./23_backpressure_pipeline ./25_reflect_unsafe ./26_compiler_ssa ./27_advanced_testing_profiling ./28_production_service/...
 ```
