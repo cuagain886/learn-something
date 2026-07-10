@@ -213,6 +213,8 @@ mu.Unlock()
 
 ## 一句话总结
 
+继续实验：[25 · channel、select 与 runtime semaphore](25_channel_select_semaphore.md) / [`33_channel_select_semaphore`](../code/33_channel_select_semaphore)。
+
 > **Mutex 用正常/饥饿双模式平衡吞吐与公平（1ms 阈值切换）、不可重入不可拷贝；读多写少用 RWMutex；单值并发用 atomic(CAS)，复杂临界区用 Mutex；sync.Pool 复用临时对象降 GC 但 GC 时会清空。**
 
 ➡️ 上一篇：[08 · 内存逃逸](08_memory_alloc_escape.md) ｜ 下一篇：[10 · 并发模式与陷阱](10_concurrency_patterns.md)

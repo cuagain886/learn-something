@@ -92,6 +92,31 @@ go test -race ./28_production_service/...
 27 测试与诊断 → 28 综合服务
 ```
 
+### 第六阶段：runtime 源码与系统边界（29–36）
+
+> 以 Go 1.26.4、Linux amd64 源码为主线；默认代码跨平台，Linux epoll 与 cgo 使用专项构建条件。每讲对应 `../knowledge/21–28`，并包含源码地图、测试、Benchmark 和至少 12 道面试题。
+
+| # | 主题 | 核心知识点 | 专项验证 |
+|---|------|-----------|---------|
+| 29 | [runtime 调度器](29_runtime_scheduler/main.go) | G/M/P、runq、work stealing、sysmon、抢占 | `go test -race ./29_runtime_scheduler` |
+| 30 | [goroutine 栈与 ABI](30_goroutine_stack_abi/main.go) | 连续栈、morestack、寄存器 ABI、闭包、panic 展开 | `go test -race ./30_goroutine_stack_abi` |
+| 31 | [分配器与 GC pacer](31_allocator_gc_pacer/main.go) | size class、mcache/mheap、写屏障、scavenger、内存上限 | `go test -race ./31_allocator_gc_pacer` |
+| 32 | [Swiss Table map](32_map_swiss_table/main.go) | control byte、H1/H2、探测、tombstone、目录分裂 | `go test ./32_map_swiss_table -fuzz FuzzSwissTable -fuzztime 10s` |
+| 33 | [channel/select/semaphore](33_channel_select_semaphore/main.go) | hchan、sudog、select、gopark、futex、Cond | `go test -race ./33_channel_select_semaphore` |
+| 34 | [接口与泛型 runtime](34_interface_generics_runtime/main.go) | eface/iface/itab、装箱、shape/dictionary、去虚拟化 | `go test -race ./34_interface_generics_runtime` |
+| 35 | [syscall/cgo/netpoll](35_syscall_cgo_netpoll/main.go) | fd、epoll/IOCP/kqueue、pollDesc、cgo 边界 | `go test -race ./35_syscall_cgo_netpoll` |
+| 36 | [runtime 事故实验室](36_runtime_forensics/main.go) | metrics、pprof、trace、泄漏、竞争、GC、子进程隔离 | `go test -race ./36_runtime_forensics` |
+
+源码深挖顺序：`29 → 30 → 31 → 32 → 33 → 34 → 35 → 36`。
+
+```powershell
+go test -race ./29_runtime_scheduler ./30_goroutine_stack_abi ./31_allocator_gc_pacer ./32_map_swiss_table ./33_channel_select_semaphore ./34_interface_generics_runtime ./35_syscall_cgo_netpoll ./36_runtime_forensics
+$env:CGO_ENABLED='0'
+go test ./...
+Remove-Item Env:CGO_ENABLED
+# 有 C 工具链时再运行：go test -tags=cgo_lab ./35_syscall_cgo_netpoll
+```
+
 ## 怎么学效果最好
 
 1. **先跑再读**：`go run` 看输出，对照源码注释理解每一行

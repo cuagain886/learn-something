@@ -176,6 +176,8 @@ G 执行完不会立即销毁，会被放进 P 的 `gFree` 列表**复用**，�
 
 ## 一句话总结
 
+继续实验：[21 · runtime 调度器](21_runtime_scheduler.md)、[22 · goroutine 栈与 ABI](22_goroutine_stack_abi.md)、[27 · syscall/cgo/netpoll](27_syscall_cgo_netpoll.md) 与 [28 · runtime 事故诊断](28_runtime_forensics.md)。
+
 > **GMP = goroutine(G) 在调度上下文(P，持无锁本地队列)的协调下被 OS 线程(M)执行，M:N 用户态调度；本地队列优先+work-stealing 负载均衡，系统调用 hand-off 解绑 P，1.14+ 信号异步抢占防死循环饿死。**
 
 ➡️ 上一篇：[05 · defer](05_defer_panic_recover.md) ｜ 下一篇：[07 · GC 垃圾回收](07_gc.md)

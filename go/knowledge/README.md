@@ -49,16 +49,30 @@
 | 19 | [高级测试与性能诊断](19_advanced_testing_profiling.md) | [`27_advanced_testing_profiling`](../code/27_advanced_testing_profiling) | 属性/Golden/Fuzz、Race、可靠 Benchmark、pprof、trace |
 | 20 | [生产级并发 HTTP 服务](20_production_service.md) | [`28_production_service`](../code/28_production_service) | 限流、背压、重试、熔断、错误映射、可观测性、优雅停机 |
 
+### 第五部分：runtime 源码与系统边界（深入 ⭐⭐⭐）
+
+| # | 文档 | 对应代码 | 核心考点 |
+|---|------|---------|---------|
+| 21 | [runtime 调度器](21_runtime_scheduler.md) | [`29_runtime_scheduler`](../code/29_runtime_scheduler) | G/M/P、runq、steal、sysmon、抢占 |
+| 22 | [goroutine 栈与 ABI](22_goroutine_stack_abi.md) | [`30_goroutine_stack_abi`](../code/30_goroutine_stack_abi) | 连续栈、栈图、寄存器 ABI、闭包、panic |
+| 23 | [分配器与 GC pacer](23_allocator_gc_pacer.md) | [`31_allocator_gc_pacer`](../code/31_allocator_gc_pacer) | size class、mcache/mheap、assist、scavenger |
+| 24 | [Swiss Table map](24_map_swiss_table.md) | [`32_map_swiss_table`](../code/32_map_swiss_table) | control/group、H1/H2、探测、增长与迭代 |
+| 25 | [channel/select/semaphore](25_channel_select_semaphore.md) | [`33_channel_select_semaphore`](../code/33_channel_select_semaphore) | hchan、sudog、select、sema、sync 原语 |
+| 26 | [接口与泛型 runtime](26_interface_generics_runtime.md) | [`34_interface_generics_runtime`](../code/34_interface_generics_runtime) | eface/iface/itab、shape/dictionary、去虚拟化 |
+| 27 | [syscall/cgo/netpoll](27_syscall_cgo_netpoll.md) | [`35_syscall_cgo_netpoll`](../code/35_syscall_cgo_netpoll) | syscall 交接、epoll/IOCP/kqueue、cgo |
+| 28 | [runtime 综合事故诊断](28_runtime_forensics.md) | [`36_runtime_forensics`](../code/36_runtime_forensics) | metrics、pprof、trace、崩溃与证据链 |
+
 ---
 
 ## 🎯 推荐学习路线
 
-整个仓库分三层：
+整个仓库分四层：
 
 ```text
 代码基础 01–20
   → 底层专题 01–12
     → 核心八讲 13–20（对应代码 21–28）
+      → runtime 源码深挖 21–28（对应代码 29–36）
 ```
 
 ```
@@ -77,6 +91,13 @@ Day 11-14: 10 11 12 刷题  ★ 每篇末尾的面试题都要能脱口而出
 13 内存模型 → 14 结构化并发 → 15 背压
 16 HTTP/netpoll → 18 编译器 → 17 反射/unsafe
 19 测试诊断 → 20 综合服务
+```
+
+runtime 源码深挖顺序：
+
+```text
+21 调度器 → 22 栈/ABI → 23 分配器/GC → 24 Swiss Table
+25 channel/select/semaphore → 26 接口/泛型 → 27 syscall/cgo/netpoll → 28 事故诊断
 ```
 
 **面试官最爱问的 5 个"灵魂拷问"**（在对应文档里都有详解）：
@@ -115,7 +136,7 @@ GODEBUG=schedtrace=1000 go run main.go # 每秒打印调度器状态
 
 ## ⚠️ 关于版本
 
-本文档基础部分适用于 **Go 1.21+**，核心八讲以仓库当前 **Go 1.26.4** 为目标版本。涉及版本差异的地方会特别标注，常见的几个分水岭：
+本文档基础部分适用于 **Go 1.21+**，核心八讲与 runtime 源码深挖以仓库当前 **Go 1.26.4** 为目标版本。涉及版本差异的地方会特别标注，常见的几个分水岭：
 
 - **Go 1.13**：错误包装 `%w` / `errors.Is/As`
 - **Go 1.14**：基于信号的**异步抢占式调度**（解决了死循环 goroutine 饿死调度器的问题）

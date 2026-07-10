@@ -254,4 +254,6 @@ Shutdown 停止新连接并等待活动请求在 deadline 内完成；Close 直�
 
 ## 一句话总结
 
+继续实验：[27 · syscall、cgo 与 runtime netpoll](27_syscall_cgo_netpoll.md) / [`35_syscall_cgo_netpoll`](../code/35_syscall_cgo_netpoll)。
+
 > 复用 Client/Transport、完整管理 Body、分层设置 deadline、按顺序优雅关闭；netpoll 让网络等待高效，但容量和过载仍必须由应用治理。

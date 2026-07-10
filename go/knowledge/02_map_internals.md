@@ -2,11 +2,13 @@
 
 > map 的考点集中在三个"为什么"：**为什么无序？为什么并发读写直接 panic？为什么 key 必须可比较？** 答好这三个，底层基本就通了。
 
+> **版本说明：** 本文的 `hmap/bmap`、overflow bucket 和旧式渐进扩容描述适用于 Go 1.23 及更早实现。Go 1.24+ 已迁移到 Swiss Table；仓库当前 Go 1.26.4 的实现请学习 [24 · Swiss Table map](24_map_swiss_table.md) 与对应实验 [`32_map_swiss_table`](../code/32_map_swiss_table)。语言层的无序、可比较键和并发同步要求仍有效。
+
 ---
 
-## 1. 底层结构：哈希表 + 桶（bucket）
+## 1. 旧版底层结构：哈希表 + 桶（bucket）
 
-map 的真身是 `runtime/map.go` 里的 `hmap`：
+Go 1.23 及更早版本的 map 主体是 `runtime/map.go` 里的 `hmap`：
 
 ```go
 type hmap struct {
@@ -115,7 +117,7 @@ m := map[string]int{"a": 1, "b": 2, "c": 3}
 for k := range m { fmt.Print(k, " ") } // 每次运行顺序都可能不同
 ```
 
-**要有序怎么办？** 取出 key 到切片，`sort.Strings(keys)` 排序后再遍历（见 [07_maps 教程](../07_maps/main.go)）。
+**要有序怎么办？** 取出 key 到切片，`sort.Strings(keys)` 排序后再遍历（见 [07_maps 教程](../code/07_maps/main.go)）。
 
 ### 为什么并发读写直接 panic 而不是加锁？⭐⭐
 
@@ -190,6 +192,6 @@ sm.Range(func(k, v any) bool {  // 遍历（返回 false 停止）
 
 ## 一句话总结
 
-> **map = hmap + 8 路桶 + 溢出链 + 渐进式扩容；无序是哈希+刻意随机，并发 panic 是 fail-fast 的性能取舍，要并发用 RWMutex 或读多写少的 sync.Map。**
+> **稳定语义是无序、键必须可比较、并发写需同步；旧版实现是 hmap/bmap，新版 Go 1.24+ 是 Swiss Table。要并发用所有权、Mutex/RWMutex 或适用场景下的 sync.Map。**
 
 ➡️ 上一篇：[01 · 切片](01_slice_internals.md) ｜ 下一篇：[03 · channel 底层原理](03_channel_internals.md)

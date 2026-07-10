@@ -200,6 +200,8 @@ func main() {
 
 ## 一句话总结
 
+继续实验：[26 · interface、泛型与 runtime 类型系统](26_interface_generics_runtime.md) / [`34_interface_generics_runtime`](../code/34_interface_generics_runtime)。
+
 > **接口 = (类型信息 itab/​_type, 数据指针) 二元组，方法调用靠 itab 方法表跳转；只有类型和数据都为 nil 接口才 == nil（nil 指针装箱仍 != nil）；指针接收者方法只让 *T 实现接口。**
 
 ➡️ 上一篇：[03 · channel](03_channel_internals.md) ｜ 下一篇：[05 · defer/panic/recover](05_defer_panic_recover.md)
