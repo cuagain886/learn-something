@@ -181,16 +181,16 @@ case <-time.After(2 * time.Second): // time.After 返回一个 2s 后会收到�
 
 ## 7. 面试速答清单
 
-| 问题 | 一句话答案 |
-|------|-----------|
-| channel 底层？ | hchan：环形缓冲 + 发送/接收等待队列 + mutex |
-| 有等待者时数据怎么传？ | goroutine 间**直接拷贝**，不过缓冲区（最快路径） |
-| 读已关闭 channel？ | 缓冲有数据照常读，读完返回零值 + ok=false，不阻塞 |
-| 哪些操作 panic？ | 重复 close、向关闭/nil channel 发送、close nil channel |
-| nil channel？ | 收发永久阻塞——可在 select 中置 nil 来禁用分支 |
-| select 怎么选？ | 就绪的里**随机**选一个；都不就绪则挂到所有 channel 队列上等 |
-| 无缓冲 channel 意义？ | 同步会合，保证发送方知道接收方已收到 |
-| 谁来 close？ | 发送方，且只关一次；可作退出广播 |
+| 问题              | 一句话答案                                         |
+| --------------- | --------------------------------------------- |
+| channel 底层？     | hchan：环形缓冲 + 发送/接收等待队列 + mutex                |
+| 有等待者时数据怎么传？     | goroutine 间**直接拷贝**，不过缓冲区（最快路径）               |
+| 读已关闭 channel？   | 缓冲有数据照常读，读完返回零值 + ok=false，不阻塞                |
+| 哪些操作 panic？     | 重复 close、向关闭/nil channel 发送、close nil channel |
+| nil channel？    | 收发永久阻塞——可在 select 中置 nil 来禁用分支                |
+| select 怎么选？     | 就绪的里**随机**选一个；都不就绪则挂到所有 channel 队列上等          |
+| 无缓冲 channel 意义？ | 同步会合，保证发送方知道接收方已收到                            |
+| 谁来 close？       | 发送方，且只关一次；可作退出广播                              |
 
 ---
 

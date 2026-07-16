@@ -279,11 +279,11 @@ function foo(x: string | null) {
 function bar(x: string | number) {
     const isStr = typeof x === "string";
     if (isStr) {
-        x.toUpperCase();  // ❌ 不收窄！TS 不跟踪布尔变量
+        x.toUpperCase();  // ✅ TS 会跟踪未被重新赋值的别名条件
     }
 }
-// 解决：直接在条件中写 typeof x === "string"（不用中间变量）
-// 或使用类型谓词函数
+// 若 isStr 使用 let 且后来被改写，或判断被封装进返回 boolean（而非类型谓词）
+// 的普通函数，编译器才可能失去 value 与判断结果之间的关联。
 ```
 
 ---

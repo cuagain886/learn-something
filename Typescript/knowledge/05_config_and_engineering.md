@@ -16,7 +16,7 @@
 }
 ```
 
-这一个选项开启 7 个子选项。没有理由不开——新项目默认就是开的，老项目也应该作为目标。
+在本项目使用的 TypeScript 6.0.3 中，这个总开关控制下面 8 个严格检查项。具体集合会随 TS 版本演进，不要把它理解为永远固定的清单。新项目应直接开启，老项目也应把全量开启作为迁移目标。
 
 | 子选项（strict:true 开启） | 默认值 | 作用 |
 |---|---|---|
@@ -25,8 +25,9 @@
 | `strictFunctionTypes` | true | 函数参数正确逆变检查 |
 | `strictBindCallApply` | true | bind/call/apply 类型检查 |
 | `strictPropertyInitialization` | true | 类属性必须初始化 |
+| `strictBuiltinIteratorReturn` | true | 内置迭代器的 `TReturn` 使用精确类型，避免隐式 any |
 | `noImplicitThis` | true | this 类型不能是隐式 any |
-| `alwaysStrict` | true | 输出 ES 严格模式 |
+| `useUnknownInCatchVariables` | true | catch 变量按 unknown 而不是 any 处理 |
 
 ### 1.2 target vs lib vs module
 
@@ -251,7 +252,7 @@ declare module "legacy-lib" {
 
 | 选项 | 作用 | 代价 |
 |------|------|------|
-| `skipLibCheck: true` | 不检查 `.d.ts` 文件 | 可能错过库的类型错误（少见） |
+| `skipLibCheck: true` | 跳过声明文件内部的完整类型检查 | 可能错过声明文件彼此之间的错误（少见） |
 | `incremental: true` | 增量编译 | 多一个 `.tsbuildinfo` 文件 |
 | `isolatedModules: true` | 确保代码可被独立编译（打包器需要） | 禁止某些 TS 特有语法 |
 
@@ -351,7 +352,7 @@ npm install -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
 - [ ] `noUnusedLocals: true` —— 无未使用的局部变量
 - [ ] `noUnusedParameters: true` —— 无未使用的参数
 - [ ] `noFallthroughCasesInSwitch: true` —— switch 无意外穿透
-- [ ] `skipLibCheck: true` —— 不需要的 .d.ts 不检查
+- [ ] `skipLibCheck` 已按项目取舍设置——开启可缩短检查时间，但不会让缺失或错误的业务类型自动安全
 - [ ] `sourceMap: true` 或 false（生产通常 false，调试保留）
 - [ ] `.gitignore` 包含 `dist/`, `*.tsbuildinfo`
 - [ ] CI 中运行 `tsc --noEmit`（只检查不输出）

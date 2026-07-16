@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-object-demo
+  namespace: dk-course
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api-object-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-object-demo
+        track: canary
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.29-alpine

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: crashloop-demo
+  namespace: dk-course
+spec:
+  restartPolicy: Always
+  containers:
+    - name: exits
+      image: alpine:3.22
+      command: ["sh", "-c", "echo about-to-exit-42; exit 42"]

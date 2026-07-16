@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lifecycle-api-broken
+  namespace: dk-course
+spec:
+  selector:
+    app.kubernetes.io/name: lifecycle-api
+    app.kubernetes.io/instance: selector-does-not-exist
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http

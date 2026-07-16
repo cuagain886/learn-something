@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lifecycle-api-headless
+  namespace: dk-course
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: lifecycle-api
+    app.kubernetes.io/instance: course
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: http

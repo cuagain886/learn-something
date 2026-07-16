@@ -1,0 +1,63 @@
+name: dk-course
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        VERSION: lesson-10
+    image: dk-course/compose-counter:10
+    environment:
+      REDIS_ADDR: redis:6379
+    ports:
+      - "127.0.0.1:${APP_PORT:-18090}:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+        restart: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.50
+    pids_limit: 100
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - backend
+
+  redis:
+    image: redis:8.2-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 3s
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  redis-data:
+    labels:
+      fighting.course: docker-kubernetes
+      fighting.lesson: "10"

@@ -7,8 +7,8 @@
 从语言基础到 runtime 源码，从前端三件套到 AI Agent 工程化，成体系地把每个主题啃透。
 
 [![Language](https://img.shields.io/badge/lang-Go%20%7C%20Java%20%7C%20Python%20%7C%20TS%20%7C%20JS-00ADD8?style=flat-square)](#-学习地图)
-[![Docs](https://img.shields.io/badge/knowledge-100%2B%20articles-4B8BBE?style=flat-square)](#-学习地图)
-[![Code](https://img.shields.io/badge/runnable%20examples-120%2B-brightgreen?style=flat-square)](#-学习地图)
+[![Docs](https://img.shields.io/badge/knowledge-200%2B%20articles-4B8BBE?style=flat-square)](#-学习地图)
+[![Code](https://img.shields.io/badge/runnable%20examples-140%2B-brightgreen?style=flat-square)](#-学习地图)
 [![Comments](https://img.shields.io/badge/comments-中文注释即教材-red?style=flat-square)](#-设计理念)
 [![License](https://img.shields.io/badge/license-personal%20learning-lightgrey?style=flat-square)](#-许可)
 
@@ -27,6 +27,10 @@
   - [前端三件套 —— HTML / CSS / JS](#前端三件套--html--css--js)
   - [TypeScript —— 类型系统专精](#typescript--类型系统专精)
   - [AI Agent —— 工程化实战](#ai-agent--工程化实战)
+  - [Nginx —— 从配置到源码级状态机](#nginx--从配置到源码级状态机)
+  - [RPC —— 从函数调用幻觉到线上字节](#rpc--从函数调用幻觉到线上字节)
+  - [消息队列 —— Kafka / RabbitMQ / Redis Stream](#消息队列--kafka--rabbitmq--redis-stream)
+  - [Docker 与 Kubernetes —— 从容器到编排](#docker-与-kubernetes--从容器到编排)
 - [目录规范](#-目录规范)
 - [快速开始](#-快速开始)
 - [提交规范](#-提交规范)
@@ -48,8 +52,12 @@
 | 🎨 **前端** | 三件套 + 工程化 | HTML/CSS/JS → 异步 → 模块化 → Vite |
 | 🔷 **TypeScript** | 类型系统专精 | 结构化类型 → 泛型编程 → 工程配置 |
 | 🤖 **AI Agent** | 应用层工程化 | 核心模式 → RAG → 编排 → 评估 → 生产化 |
+| 🌐 **Nginx** | Web 服务器源码深挖 | 事件循环 → HTTP 状态机 → upstream → TLS → 性能调优 |
+| 🔌 **RPC** | 远程调用协议全链路 | IDL → Protobuf 线格式 → gRPC/HTTP2 → 失败语义与重试 |
+| 📨 **消息队列** | MQ 选型与核心机制 | Kafka / RabbitMQ / Redis Stream 深度对比 |
+| ☸️ **Docker / Kubernetes** | 容器与编排 | 容器 → 镜像 → Compose → K8s → 发布与排障 |
 
-> **约 170 篇知识文章 + 120+ 可运行代码示例**，每个语言目录都遵循统一的 `code/`（跑流程）+ `knowledge/`（讲原理）双轨结构。
+> **约 200+ 篇知识文章 + 140+ 可运行代码示例**，每个语言目录都遵循统一的 `code/`（跑流程）+ `knowledge/`（讲原理）双轨结构。
 
 ---
 
@@ -137,14 +145,63 @@ go test -race ./28_production_service/...
 
 > 一套循序渐进的可运行示例（`ts-node` 直接执行），聚焦 TS 最核心的**类型系统**。
 
-`Typescript/code/src/` — **编号 TS 示例**，`Typescript/knowledge/` — **5 篇文章**
+`Typescript/code/src/` — **编号 TS 示例**，`Typescript/knowledge/` — **10 篇文章**
 
 - 基础类型 / 类型推断 / 函数 / 接口 / 联合类型 / 类 / **泛型** / 类型收窄 / 高级类型 / 工具类型
-- 知识专题：类型系统概览 / **结构化 vs 名义类型** / 类型收窄模式 / 泛型与类型编程 / 配置与工程化
+- 知识专题：类型系统概览 / **结构化 vs 名义类型** / 类型收窄模式 / 泛型与类型编程 / 配置与工程化 / 类型推断上下文与 satisfies / 可赋值性、变型与稳健性 / 运行时边界与领域建模 / 模块解析与包类型 / 公共 API 类型设计
 
 ```bash
 cd Typescript/code && npm install && npm run dev
 ```
+
+---
+
+### Nginx —— 从配置到源码级状态机
+
+> 以官方 Nginx 主线源码为基线，从请求进入监听 socket 开始，追踪到 worker 事件循环、HTTP 状态机、upstream 建连与响应过滤。
+
+**24 篇深度文章**，入口见 [`Nginx/README.md`](Nginx/README.md)：
+
+| 阶段 | 主题范围 | 关键内容 |
+|------|---------|---------|
+| **进程与事件** | `01`–`02` | master/worker 架构 / epoll 事件循环 / 连接对象 |
+| **配置与 HTTP** | `03`–`06` | 配置解析与继承 / HTTP 请求状态机 / server/location 匹配 / phase 引擎与 rewrite 陷阱 |
+| **代理与缓存** | `07`–`10` | upstream 状态机 / 负载均衡与健康判定 / 缓冲流控与零拷贝 / proxy_cache 一致性 |
+| **TLS 与协议** | `11`–`12` | TLS 握手与会话复用 / HTTP2/HTTP3 多路复用与队头阻塞 |
+| **性能与运维** | `13`–`18` | sendfile+gzip+文件缓存 / 限流限连接 / 日志指标与延迟拆解 / 内核调优 / 热升级高可用 / Stream 四层代理 |
+| **源码与实战** | `19`–`24` | 源码阅读地图 / 故障注入实验 / 生产事故根因分析 / 面试必考题 / 内存池与 Buffer 生命周期 / HTTP 解析器引用计数 |
+
+---
+
+### RPC —— 从函数调用幻觉到线上字节
+
+> 拆掉"远程调用像本地函数"这层幻觉：从 IDL 追到 Protobuf 线格式、gRPC over HTTP2 协议字节、失败语义与重试策略。
+
+**6 篇深度文章**，入口见 [`RPC/README.md`](RPC/README.md)：
+
+| 主题 | 核心内容 |
+|------|---------|
+| `01` RPC 语义 | 调用链与失败模型（部分失败、超时不代表未执行、幂等键） |
+| `02` IDL 与 Schema | 代码生成、Schema 演进兼容性（ABI 兼容 vs 语义兼容） |
+| `03` Protobuf 线格式 | varint、length-delimited、字段序与未知字段逐字节拆解 |
+| `04` gRPC over HTTP2 | 请求/响应/错误/尾元数据如何映射到 HTTP2 frame |
+| `05` HTTP2 多路复用 | stream、流控窗口、队头阻塞与连接管理 |
+| `06`  Deadline 与重试 | deadline 传播、取消、重试策略、幂等与去重 |
+
+---
+
+### 消息队列 —— Kafka / RabbitMQ / Redis Stream
+
+> 没有"最好的 MQ"，只有匹配业务约束的消息模型。从选型 15 问到三者的消息模型、可靠性、性能与运维对比。
+
+入口见 [`MQ/MQ选型深度指南_Kafka_RabbitMQ_RedisStream.md`](MQ/MQ选型深度指南_Kafka_RabbitMQ_RedisStream.md)，子目录含各 MQ 的核心机制记录：
+
+| 子模块 | 定位 |
+|--------|------|
+| **选型指南** | 先给结论 → 15 个量化问题 → 消息模型对比 → 可靠性/性能/运维三维矩阵 |
+| `Kafka/` | 分区与消费组、ISR 与水位、日志压缩、幂等与事务 |
+| `RabbitMQ/` | exchange/queue/binding 拓扑、TTL/DLX/优先级、确认与回退 |
+| `RedisStream/` | stream/consumer group/pending entries、与 Redis 数据结构配合 |
 
 ---
 
@@ -164,6 +221,21 @@ cd Typescript/code && npm install && npm run dev
 | 🛡️ **生产化** | [`production`](agent/production) | 安全威胁全景 / Prompt 注入防御 / 最小权限隔离 / 护栏与人类介入 / 成本延迟治理 |
 
 > **黄金法则**：从简单开始，按需增加复杂度。先把「单 Agent + ReAct + 好工具」做扎实——它能搞定现实中大多数任务。
+
+---
+
+### Docker 与 Kubernetes —— 从容器到编排
+
+> 以一个小型 Go HTTP 服务贯穿全部实验：先构建 Docker 镜像与 Compose 开发环境，再部署到本地 Kubernetes 集群，最终完成更新、扩缩容、可观测与故障排查。
+
+总路线规划为 **8 个阶段、28 个递进实验和 14 篇原理文章**，当前已建立课程骨架，后续逐课补充：
+
+- Docker：容器生命周期、镜像、Dockerfile、存储、网络与 Compose。
+- Kubernetes：架构、Pod、Deployment、Service、配置、存储与 Ingress。
+- 生产实践：探针、资源、调度、滚动更新、扩缩容、可观测与系统排障。
+- 综合项目：从源码、镜像一路交付到本地集群，并完成坏版本回滚和故障演练。
+
+入口见 [`docker-kubernetes/README.md`](docker-kubernetes/README.md)。
 
 ---
 
@@ -206,6 +278,10 @@ git clone <this-repo> Fighting && cd Fighting
 | 前端 | [`frontend/code/README.md`](frontend/code/README.md) | 浏览器（工程化部分需 Node 18+） |
 | TypeScript | [`Typescript/code/README.md`](Typescript/code/README.md) | Node 18+ |
 | AI Agent | [`agent/INDEX.md`](agent/INDEX.md) | 纯阅读，无需环境 |
+| Nginx | [`Nginx/README.md`](Nginx/README.md) | 纯阅读，无需环境 |
+| RPC | [`RPC/README.md`](RPC/README.md) | 纯阅读，无需环境 |
+| 消息队列 | [`MQ/MQ选型深度指南_Kafka_RabbitMQ_RedisStream.md`](MQ/MQ选型深度指南_Kafka_RabbitMQ_RedisStream.md) | 纯阅读，无需环境 |
+| Docker / Kubernetes | [`docker-kubernetes/README.md`](docker-kubernetes/README.md) | Docker Desktop、kubectl、kind |
 
 ---
 

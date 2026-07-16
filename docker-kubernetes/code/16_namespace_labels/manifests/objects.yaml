@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application-metadata
+  namespace: lab-dev
+  labels:
+    app.kubernetes.io/name: course-api
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: docker-kubernetes-course
+    app.kubernetes.io/managed-by: kubectl
+    environment: development
+    tier: backend
+  annotations:
+    owner.example.com/contact: platform-dev@example.invalid
+    owner.example.com/runbook: https://runbooks.example.invalid/course-api
+data:
+  log-level: debug
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: search-index
+  namespace: lab-dev
+  labels:
+    app.kubernetes.io/name: search-index
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: docker-kubernetes-course
+    environment: development
+    tier: database
+data:
+  engine: memory
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application-metadata
+  namespace: lab-prod
+  labels:
+    app.kubernetes.io/name: course-api
+    app.kubernetes.io/instance: prod
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: docker-kubernetes-course
+    app.kubernetes.io/managed-by: kubectl
+    environment: production
+    tier: backend
+  annotations:
+    owner.example.com/contact: platform-oncall@example.invalid
+    owner.example.com/runbook: https://runbooks.example.invalid/course-api
+data:
+  log-level: info
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-export
+  namespace: lab-prod
+  labels:
+    app.kubernetes.io/name: audit-export
+    app.kubernetes.io/instance: prod
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: docker-kubernetes-course
+    environment: production
+    tier: batch
+data:
+  schedule: hourly

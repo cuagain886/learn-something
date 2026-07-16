@@ -6,14 +6,19 @@
 
 ```
 Fighting/
-├── agent/          # AI Agent 相关（核心模式、上下文工程、评估、RAG、编排、生产化）
-├── frontend/       # 前端三件套（HTML/CSS/JS/TS + 工程化）
-├── go/             # Go 语言（基础 → 并发 → 标准库）
-├── java/           # Java 进阶（OOP → 泛型 → 并发 → 模块化 → 虚拟线程）
-├── python/         # Python 语言 + LangChain + LangGraph
-├── Typescript/     # TypeScript 系统学习
-├── .github/        # GitHub Actions 工作流
-└── CLAUDE.md       # 本文件
+├── agent/             # AI Agent 相关（核心模式、上下文工程、评估、RAG、编排、生产化）
+├── frontend/          # 前端三件套（HTML/CSS/JS/TS + 工程化）
+├── go/                # Go 语言（基础 → 并发 → 标准库 → runtime 源码）
+├── java/              # Java 进阶（OOP → 泛型 → 并发 → 模块化 → 虚拟线程）
+├── python/            # Python 语言 + LangChain + LangGraph
+├── Typescript/        # TypeScript 系统学习
+├── Nginx/             # Nginx 源码深挖（事件循环 → HTTP 状态机 → upstream → 性能调优）
+├── RPC/               # RPC 协议全链路（IDL / Protobuf / gRPC / 失败语义）
+├── MQ/                # 消息队列（Kafka / RabbitMQ / Redis Stream 选型与机制）
+├── docker-kubernetes/ # 容器与编排（Docker → Compose → Kubernetes）
+├── docs/              # 项目文档（规划与规格）
+├── .github/           # GitHub Actions 工作流
+└── CLAUDE.md          # 本文件
 ```
 
 ## 目录规范
@@ -42,6 +47,7 @@ Fighting/
 - Markdown 格式，带 YAML 标准 frontmatter 或标题行
 - 深度讲解原理性内容，不重复代码教程
 - 与代码示例互补，代码跑流程，知识讲原理
+- **纯知识目录**（`Nginx/`、`RPC/`、`MQ/`）仅包含 .md 文章，不设 `code/` 子目录，直接扁平放置编号文档
 
 ## Git 提交规范
 

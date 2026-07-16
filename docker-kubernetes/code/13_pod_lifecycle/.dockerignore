@@ -1,0 +1,5 @@
+.git
+README.md
+manifests/
+*.log
+Dockerfile*
