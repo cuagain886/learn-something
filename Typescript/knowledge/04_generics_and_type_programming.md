@@ -1,6 +1,6 @@
 # 04 · 泛型与类型编程 ⭐⭐⭐
 
-> TS 的类型系统是**图灵完备**的——你可以在类型层面做计算。泛型是这门"类型编程语言"的基石。
+> TypeScript 的条件类型和递归类型能够表达非常复杂的计算，有研究和实验将其视为具备图灵完备能力。但这不是面向业务的执行环境，也不是稳定的语言性能承诺。泛型的首要用途是保存输入、输出和键之间的关系。
 
 ---
 
@@ -28,8 +28,11 @@ class Stack<T> { /* ... */ }                          // 泛型类
 ## 2. 泛型约束（extends）—— 限制类型参数的"形状"
 
 ```typescript
-// 无约束：T 可以是任何类型
-function first<T>(arr: T[]): T { return arr[0]; }
+// 普通数组可能为空；在 noUncheckedIndexedAccess 下必须诚实返回 T | undefined。
+function first<T>(arr: readonly T[]): T | undefined { return arr[0]; }
+
+// 若调用契约明确要求非空元组，才可以保证 T。
+function firstRequired<T>(arr: readonly [T, ...T[]]): T { return arr[0]; }
 
 // 有约束：T 必须至少满足某个结构
 function logLength<T extends { length: number }>(value: T): T {
@@ -144,18 +147,18 @@ type NonNullable<T> = T extends null | undefined ? never : T;
 
 ```typescript
 // 当 T 是联合类型时，条件类型会自动"分发"到每个成员
-type ToArray<T> = T extends any ? T[] : never;
+type ToArray<T> = T extends unknown ? T[] : never;
 
 type Result = ToArray<string | number>;
 // 不是 (string | number)[]
 // 而是 string[] | number[]
-// 因为分发：(string extends any ? string[] : never) | (number extends any ? number[] : never)
+// 因为分发：(string extends unknown ? string[] : never) | (number extends unknown ? number[] : never)
 ```
 
 **阻止分发**：用方括号包裹 T：
 
 ```typescript
-type ToArrayNoDistribute<T> = [T] extends [any] ? T[] : never;
+type ToArrayNoDistribute<T> = [T] extends [unknown] ? T[] : never;
 type Result2 = ToArrayNoDistribute<string | number>;  // (string | number)[]
 ```
 
@@ -167,18 +170,17 @@ type Result2 = ToArrayNoDistribute<string | number>;  // (string | number)[]
 
 ```typescript
 // 提取数组的元素类型
-type ElementType<T> = T extends (infer U)[] ? U : never;
+type ElementType<T> = T extends readonly (infer U)[] ? U : never;
 
 // 提取函数返回值类型（内置 ReturnType 的原理）
-type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+type MyReturnType<T> = T extends (...args: never[]) => infer R ? R : never;
 
 // 提取 Promise 的值类型（递归版，处理嵌套 Promise）
-type Awaited<T> = T extends Promise<infer V> ? Awaited<V> : T;
-type R1 = Awaited<Promise<string>>;       // string
-type R2 = Awaited<Promise<Promise<number>>>; // number
+type MyAwaited<T> = T extends PromiseLike<infer V> ? MyAwaited<V> : T;
+type R1 = MyAwaited<Promise<string>>; // string
 
 // 提取函数第一个参数
-type FirstArg<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+type FirstArg<T> = T extends (first: infer F, ...rest: never[]) => unknown ? F : never;
 type Arg = FirstArg<(x: number, y: string) => void>;  // number
 ```
 
@@ -196,7 +198,7 @@ type Listener<E> = E extends undefined
     ? () => void
     : (event: E) => void;
 
-class EventEmitter<T extends Record<string, any>> {
+class EventEmitter<T extends Record<string, unknown>> {
     on<K extends keyof T>(event: K, listener: Listener<T[K]>): void { /* ... */ }
     emit<K extends keyof T>(event: K, ...args: T[K] extends undefined ? [] : [T[K]]): void { /* ... */ }
 }
@@ -242,9 +244,9 @@ h1 = h2;      // ❌ strictFunctionTypes 下报错！
 |------|------|------|
 | 返回值 | 协变 | 子类型的返回值可以更窄 |
 | 参数 | 逆变 | 子类型的参数可以更宽 |
-| 数组/对象属性 | 协变 | `Dog[]` 可赋给 `Animal[]` |
+| `readonly` 数组/只读输出 | 协变 | `readonly Dog[]` 可安全作为 `readonly Animal[]` 读取 |
 
-**实用结论**：在 `strictFunctionTypes: true` 下（推荐开启），TS 对函数参数做正确的逆变检查。这防止了一类罕见的运行时错误。
+**实用结论**：在 `strictFunctionTypes: true` 下，函数类型属性的参数按逆变方向检查；方法/构造签名仍有兼容性例外。可变 `Dog[] → Animal[]` 虽被允许，却能通过 `push(new Animal())` 破坏原数组，是刻意保留的不健全点。详见 [07 · 可赋值性、方差与健全性](07_assignability_variance_and_soundness.md)。
 
 ---
 
@@ -289,7 +291,168 @@ TS 的类型编程能力很强，但有代价：
 - 让类型推导比业务逻辑还复杂
 - 写出来自己下周看不懂的类型
 
-**原则**：类型是**工具**，不是**目的**。如果一段类型代码让你头疼，那就简化它（哪怕用 `any` 做逃生舱）。
+**原则**：类型是证明工具，不是目的。复杂度超过收益时，缩小公共契约、把动态部分收敛为 `unknown` 并在一个经过验证的边界解析；不要用传播性的 `any` 把 checker 整段关闭。
+
+完整的实例化量、递归深度和 trace 分析见 [20 · 类型级算法与编译性能](20_type_level_performance.md)。
+
+---
+
+## 10. 泛型与联合表达的承诺完全不同
+
+```typescript
+function generic<T extends string | number>(value: T): T {
+    return value;
+}
+
+function union(value: string | number): string | number {
+    return value;
+}
+```
+
+泛型签名对**每一次具体调用**承诺输入输出保持同一个 T；联合签名只承诺返回联合中的某一项，调用方无法知道与输入相同。
+
+更形式化地理解：
+
+```text
+generic: 对所有满足约束的 T，(T) → T
+union:   (string | number) → (string | number)
+```
+
+因此，如果类型参数只出现一次，通常并没有表达关系：
+
+```typescript
+function parseBad<T>(text: string): T {
+    return JSON.parse(text) as T;
+}
+```
+
+这里 T 完全由调用方指定，实现在运行时没有任何证据，等价于可定制断言。正确 API 应返回 unknown，或接收能在运行时验证 T 的 schema/parser。
+
+---
+
+## 11. 推断是在候选、约束和上下文之间求解
+
+```typescript
+function choose<T>(left: T, right: T): T {
+    return Math.random() > 0.5 ? left : right;
+}
+
+choose(1, 2);      // T 通常推断为 number
+// choose(1, "x"); // 不要假设总会自动得到 number | string
+```
+
+推断会从参数位置收集候选，也可能受到目标返回位置的上下文影响。多个位置共享 T 意味着它们必须建立真实关系，不是“让函数接受任何东西”的快捷语法。
+
+常见诊断：
+
+- T 只出现于返回值：调用方可凭空指定，没有运行时证据。
+- 两个无关参数共享 T：产生难懂推断冲突。
+- 约束写得过宽：实现几乎不能使用 T。
+- 约束写成 `Record<string, unknown>`：无意拒绝没有字符串索引签名的具体接口。
+- 回调参数和返回值互相推断：可能出现循环上下文，需要显式边界注解。
+
+完整推断信息流见 [06 · 推断、上下文类型与 satisfies](06_inference_context_and_satisfies.md)。
+
+---
+
+## 12. `const` 类型参数保留调用点字面量
+
+```typescript
+function defineRoutes<const Routes extends readonly string[]>(routes: Routes): Routes {
+    return routes;
+}
+
+const routes = defineRoutes(["/users", "/orders"]);
+// readonly ["/users", "/orders"]
+```
+
+`const` generic 修改的是推断策略，不会让运行时参数冻结，也不会把已经拓宽的变量重新恢复成字面量：
+
+```typescript
+const widened: string[] = ["/users", "/orders"];
+defineRoutes(widened); // 信息已经丢失，仍是 string[]
+```
+
+它适合配置表、事件名、工具定义等调用点 literal；若 API 只需要普通数组，不应为了更炫的 hover 无条件使用。
+
+---
+
+## 13. `NoInfer` 区分“推断来源”和“校验位置”
+
+```typescript
+function stateMachine<State extends string>(
+    states: readonly State[],
+    initial: NoInfer<State>,
+): { readonly states: readonly State[]; readonly initial: State } {
+    return { states, initial };
+}
+
+stateMachine(["idle", "running"] as const, "idle");
+// stateMachine(["idle", "running"] as const, "missing"); // ❌
+```
+
+若 initial 也参与候选收集，编译器可能扩大 State 来容纳它。`NoInfer` 不改变最终类型，只阻止某个位置贡献推断候选，使它仅用于验证已经从其他位置得到的 T。
+
+---
+
+## 14. 泛型方差由 T 的使用位置涌现
+
+```typescript
+type Producer<T> = { produce: () => T };       // T 在输出位置，协变
+type Consumer<T> = { consume: (value: T) => void }; // 输入位置，逆变
+type Cell<T> = {
+    get: () => T;
+    set: (value: T) => void;
+}; // 同时输入/输出，应接近不变
+```
+
+TypeScript 通常自动推断方差。`in`/`out` 方差注解是用于极少数实例化比较/性能问题的高级工具：
+
+- 不能改变匿名结构比较的实际行为；
+- 不能用来强迫一个本来不安全的类型变安全；
+- 必须与结构中 T 的真实使用方向一致；
+- 只有 profiling 证明方差推断是热点时才可能作为性能优化。
+
+日常设计应通过 readonly 输出、函数属性输入和避免可变暴露自然得到正确方差。
+
+---
+
+## 15. TypeScript 没有通用高阶类型参数
+
+在某些函数式语言中可以抽象“接收类型构造器 F，再操作 F<A>”。TypeScript 没有原生 higher-kinded types：
+
+```text
+想表达：F<_> 作为类型参数
+实际 TS：通常需要 URI 映射、接口编码或具体重载模拟
+```
+
+复杂 HKT 模拟会增加声明、错误信息和 checker 成本。Agent 业务代码通常用具体 `Promise<T>`、`Result<T,E>`、`AsyncIterable<T>` 更清楚；只有库确实需要跨容器抽象时才承担编码复杂度。
+
+---
+
+## 16. 类型级计算不会生成运行时实现
+
+```typescript
+type ToolInput<Tool> = Tool extends { input: infer Input } ? Input : never;
+```
+
+这个类型可以让调用方得到精确补全，但不能：
+
+- 验证 LLM 传来的 JSON；
+- 在运行时枚举 Input 的字段；
+- 生成供应商需要的 JSON Schema；
+- 检查 number 是 finite integer；
+- 保留品牌不变量。
+
+可靠工具系统需要一个运行时事实源：
+
+```text
+schema DSL → 运行时 parse
+           → 静态 Infer<Schema>
+           → 模型工具 descriptor
+```
+
+另一条路径是构建期 Compiler API/codegen，但要明确支持的 TypeScript 子集并对生成物做 snapshot/contract test。
 
 ---
 

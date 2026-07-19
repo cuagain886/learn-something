@@ -1,26 +1,27 @@
 /**
- * math-utils.ts —— 第 11 课的「被导入」模块之一
- * ------------------------------------------------------------
- * 演示「命名导出」（named export）：一个文件可以导出多个具名成员。
+ * 第 11 课的叶子模块：同时导出 JavaScript 值和 TypeScript 类型。
+ *
+ * `operations`、`add`、`PI` 会出现在 JavaScript 产物中；
+ * `Operation` 只存在于 checker 的类型空间，emit 时完全消失。
  */
 
-// 方式一：在声明前直接加 export
-export function add(a: number, b: number): number {
-  return a + b;
+export const operations = {
+  add: (left: number, right: number) => left + right,
+  subtract: (left: number, right: number) => left - right,
+  multiply: (left: number, right: number) => left * right,
+} as const satisfies Record<string, (left: number, right: number) => number>;
+
+export type Operation = keyof typeof operations;
+
+export function calculate(
+  operation: Operation,
+  left: number,
+  right: number,
+): number {
+  return operations[operation](left, right);
 }
 
-export function subtract(a: number, b: number): number {
-  return a - b;
-}
-
-// 导出一个常量
-export const PI = 3.14159;
-
-// 也可以导出「类型」。用 export type 标明它只是类型（编译后会被擦除）。
-export type Operation = 'add' | 'subtract';
-
-// 方式二：先声明，最后统一导出
-function multiply(a: number, b: number): number {
-  return a * b;
-}
-export { multiply };
+export const add = operations.add;
+export const subtract = operations.subtract;
+export const multiply = operations.multiply;
+export const PI = Math.PI;

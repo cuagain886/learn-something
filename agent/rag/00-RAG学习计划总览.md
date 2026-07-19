@@ -1,169 +1,253 @@
-# RAG 学习计划总览（工程化视角）
+# RAG 学习计划总览：证据系统与数据生命周期
 
-> 面向「应用层 / Agent 开发者」的 RAG（Retrieval-Augmented Generation，检索增强生成）系统化学习路线。
-> 重点是**工程落地**：如何把一个能跑的 Demo 变成在生产环境里准确、稳定、可观测、可迭代的系统。
-> 不涉及 Transformer 内部结构，所有"原理"都停留在"为什么这么做、它解决了什么问题、参数怎么调"的层面。
+> 面向 Agent / 应用工程师的系统化路线。目标不是背“向量库 + top-k”，而是能构造一个按用户权限和知识版本检索证据、逐 claim 引用、可评测、可更新且可删除的生产系统。
 
 ---
 
-## 0. 这份文档集是什么
+## 0. RAG 的更准确定位
 
-这是一套循序渐进的 RAG 学习笔记 + 技术手册，分为一个总览（本文）和 8 个详细子文档。每个子文档都包含：
+RAG 不是给模型外挂一个无条件可信的“长期记忆”，而是一个**有损证据选择系统**：
 
-- **底层原理**：这个技术解决什么问题、为什么有效（不深入数学推导）。
-- **工程实现**：怎么落地，关键参数、伪代码、推荐工具。
-- **使用场景**：什么时候该用、什么时候不该用。
-- **常见坑**：真实项目里会踩到的问题。
+\[
+C\sim p_{\eta}(C\mid q,K_v,user,time),\qquad
+y\sim p_{\theta}(y\mid q,C)
+\]
 
-### 子文档清单
+- `K_v`：带版本、权限、有效时间和来源的知识快照；
+- `C`：经过过滤、检索、融合、重排和预算选择的证据；
+- `y`：基于证据生成的答案或下一步行动。
 
-| 编号 | 文档 | 核心内容 | 重要度 |
-|------|------|----------|--------|
-| 01 | [RAG 基础与核心原理](01-RAG基础与核心原理.md) | RAG 是什么、为什么需要、完整管线、与微调对比 | ⭐⭐⭐⭐⭐ |
-| 02 | [数据处理与分块策略](02-数据处理与分块策略.md) | 文档解析、清洗、分块（chunking）的所有主流策略 | ⭐⭐⭐⭐⭐ |
-| 03 | [嵌入模型与向量数据库](03-嵌入模型与向量数据库.md) | Embedding 模型选型、向量索引（HNSW/IVF）、向量库对比 | ⭐⭐⭐⭐⭐ |
-| 04 | [检索策略：混合检索与重排序](04-检索策略-混合检索与重排序.md) | 稠密/稀疏检索、BM25、混合检索+RRF、Cross-Encoder 重排 | ⭐⭐⭐⭐⭐ |
-| 05 | [查询理解：改写、路由与转换](05-查询理解-改写路由与转换.md) | Query Rewriting、HyDE、Multi-Query、查询分解、路由 | ⭐⭐⭐⭐ |
-| 06 | [高级 RAG 架构](06-高级RAG架构.md) | Contextual Retrieval、RAPTOR、GraphRAG、Agentic RAG | ⭐⭐⭐⭐ |
-| 07 | [RAG 评估与可观测性](07-RAG评估与可观测性.md) | RAGAS 指标、评估数据集构建、线上监控 | ⭐⭐⭐⭐⭐ |
-| 08 | [生产工程化与最佳实践](08-生产工程化与最佳实践.md) | 缓存、降级、安全、成本、增量更新、架构模式 | ⭐⭐⭐⭐ |
+它可以提高知识可更新性、可溯源性和私域访问能力，但不保证：
 
----
+- 知识库一定包含正确证据；
+- 检索一定找到；
+- 模型一定忠实使用；
+- 引用一定蕴含 claim；
+- 权限/删除/时间版本一定正确；
+- 比长上下文、SQL/API 或 closed-book 更便宜/准确。
 
-## 1. 为什么要学 RAG（动机）
-
-大模型有三个天生的短板，RAG 是目前最实用的解药：
-
-1. **知识截止（Knowledge Cutoff）**：模型不知道训练之后发生的事，也不知道你公司的内部文档。
-2. **幻觉（Hallucination）**：模型会一本正经地编造不存在的事实。
-3. **不可溯源**：模型给的答案无法指出"出处在哪一句"，企业场景无法接受。
-
-RAG 通过"先检索相关资料、再让模型基于资料回答"的方式，让模型的输出**有据可依、可更新、可溯源**，而且不需要重新训练模型。对于 Agent / AI 应用开发者来说，**RAG 几乎是所有"问答类、知识库类、客服类"产品的基础设施**。
-
-> 一句话定位：RAG = 给大模型外挂一个"可随时更新、可检索"的长期记忆。
+这套文档围绕这些可失败假设展开。
 
 ---
 
-## 2. 学习路线（建议按此顺序）
+## 1. 九篇文档与答辩能力
 
-整个 RAG 是一条**数据管线（pipeline）**，子文档的顺序就是这条管线的数据流向，建议按编号顺序学。
-
-```
-                       ┌─────────────── 离线阶段（Indexing / 建库）──────────────┐
-原始文档 → [02 解析+分块] → [03 嵌入] → 向量库 / 倒排索引
-                       └─────────────────────────────────────────────────────────┘
-
-                       ┌─────────────── 在线阶段（Query / 检索回答）─────────────┐
-用户问题 → [05 查询改写] → [04 混合检索] → [04 重排序] → 拼 Prompt → LLM 生成答案
-                       └─────────────────────────────────────────────────────────┘
-
-横切关注点：[06 高级架构]  [07 评估]  [08 工程化]
-```
-
-### 阶段一：建立全局认知（必修）
-- **01 基础与原理** → 搞清楚整条管线、每个环节的职责，以及 RAG vs 微调 vs 长上下文的取舍。
-- 目标：能在白板上画出完整的 RAG 流程，并解释每一步在干什么。
-
-### 阶段二：离线建库链路（必修，最影响效果的环节）
-- **02 分块** → 这是**性价比最高的优化点**，分块烂了后面全白搭。
-- **03 嵌入与向量库** → 模型选型 + 索引原理 + 数据库选型。
-- 目标：能从一堆 PDF/网页搭出一个可检索的知识库。
-
-### 阶段三：在线检索链路（必修，决定准确率上限）
-- **04 混合检索与重排** → 生产级 RAG 的"标配三件套"：混合检索 + RRF 融合 + Cross-Encoder 重排。
-- **05 查询理解** → 当用户问得很烂时，怎么把问题"修好"再去检索。
-- 目标：理解为什么"纯向量检索"在生产里不够用，并能组合出多阶段检索。
-
-### 阶段四：进阶与工程化（按需深入）
-- **06 高级架构** → 当基础 RAG 不够用时（多跳推理、全局总结、关系型问题）的升级方案。
-- **07 评估** → **没有评估就没有迭代**，这是从"玄学调参"走向"工程"的分水岭。
-- **08 工程化** → 缓存、降级、安全、成本、增量更新等真实生产问题。
-
-> ⚠️ 新手最常见的误区：一上来就追求 GraphRAG / Agentic RAG 这些花哨架构。
-> 正确顺序是：**先把"分块 + 混合检索 + 重排 + 评估"这套基础做扎实**，90% 的场景这套就够了。高级架构是在你**用评估数据证明了基础 RAG 不够**之后才上的。
+| 编号 | 文档 | 学完应能回答 |
+|---|---|---|
+| 01 | [基础与核心原理](01-RAG基础与核心原理.md) | 如何用 `N/R/U/G` 分解失败？closed-book/oracle-context 有什么用？ |
+| 02 | [数据处理与分块](02-数据处理与分块策略.md) | Chunk 如何和 query/evidence span 联合设计？parent-child 有何一致性风险？ |
+| 03 | [嵌入与向量数据库](03-嵌入模型与向量数据库.md) | 表示错误与 ANN 近似损失如何区分？过滤、删除和多租户怎样测？ |
+| 04 | [混合检索与重排](04-检索策略-混合检索与重排序.md) | RRF、score fusion、candidate budget、reranker 截断怎样影响 evidence？ |
+| 05 | [查询理解与路由](05-查询理解-改写路由与转换.md) | 如何保证改写不丢实体/时间/否定/权限，低置信路由怎样 abstain？ |
+| 06 | [高级架构](06-高级RAG架构.md) | RAPTOR/GraphRAG/Agentic RAG 分别修什么错误，更新和删除代价是什么？ |
+| 07 | [评估与可观测](07-RAG评估与可观测性.md) | relevance oracle 不完备时怎样标注？claim-citation 与配对统计怎么做？ |
+| 08 | [生产工程化](08-生产工程化与最佳实践.md) | 如何原子切 snapshot、dual-read、回填验证、传播删除并做灾备？ |
 
 ---
 
-## 3. 核心心智模型（贯穿全程的几个判断）
+## 2. 完整管线：离线派生图 + 在线证据决策
 
-学习过程中，时刻用这几个问题来检验自己的理解：
+```text
+离线 / 增量
+Source of truth
+  → fetch + provenance
+  → parse/OCR + structural validation
+  → chunk + parent/span/ACL
+  → dense embedding + sparse index
+  → optional contextual/summary/graph derivatives
+  → cross-index validation
+  → immutable knowledge snapshot
+  → atomic publish
 
-1. **RAG 的效果 = 检索质量 × 生成质量**。
-   - 实践中 **80% 的问题出在检索**（没找到对的资料），而不是生成。所以优化优先级：检索 > Prompt > 模型。
-
-2. **"召回 vs 精度"的权衡贯穿始终**。
-   - 召回（Recall）：相关的资料有没有被找回来？
-   - 精度（Precision）：找回来的资料里有多少是真正相关的？
-   - 典型策略：**先用便宜的方法广撒网（高召回）→ 再用贵的方法精排（高精度）**。这就是"多阶段检索"的本质。
-
-3. **每个环节都有"质量 / 成本 / 延迟"的三角权衡**。
-   - 语义分块准但贵、Cross-Encoder 重排准但慢、GraphRAG 强但建库成本极高。工程化就是在这个三角里做取舍。
-
-4. **能用评估量化的优化才是真优化**。
-   - "我感觉换了个分块策略好像好了一点"是不可接受的。要有评估集，要有 RAGAS 这类指标。
-
----
-
-## 4. 一个最小可用（MVP）RAG 的样子
-
-学完 01-04 后，你应该能搭出下面这套"够用的基线系统"，再在此基础上迭代：
-
-```
-建库：
-  文档 → 递归字符分块(512 token, 重叠 50) → 嵌入(bge-m3 / text-embedding-3) → 存入 Qdrant/pgvector
-
-检索：
-  问题 → 同时跑 [向量检索 top20] + [BM25 top20]
-       → RRF 融合 → 取 top10
-       → Cross-Encoder 重排 → 取 top3~5
-
-生成：
-  把 top3~5 的 chunk 拼进 Prompt（带出处标注）→ 调用 Claude/GPT → 返回带引用的答案
-
-评估：
-  准备 30~50 条「问题-标准答案」对 → 用 RAGAS 跑 faithfulness / context recall
+在线
+query + conversation + user/tenant/time
+  → intent contract / conservative rewrite / route
+  → ACL/time/source pre-filter
+  → sparse + dense + structured/API candidates
+  → fusion / rerank / coverage selection
+  → context manifest + evidence IDs
+  → answer / retrieve_more / clarify / abstain
+  → claim–citation mapping + guard
+  → trace + delayed feedback
 ```
 
-这套基线在大多数企业知识库场景就能达到可用水平。**先把它跑通、能评估，再谈进阶。**
+Deletion 是反向管线：source tombstone 必须沿 lineage 到 chunks、vectors、postings、parent/context、summary/graph、cache、trace/eval artifacts 和备份策略。
 
 ---
 
-## 5. 推荐的工具栈（2025-2026 主流）
+## 3. 四层正确性
 
-| 环节 | 入门 / 学习用 | 生产可选 |
-|------|--------------|----------|
-| 编排框架 | LangChain / LlamaIndex | LlamaIndex、Haystack、或自研薄封装 |
-| 文档解析 | PyMuPDF、unstructured | Azure Document Intelligence、LlamaParse |
-| 嵌入模型 | bge-m3、text-embedding-3-small | Cohere embed v3、voyage、自托管 bge |
-| 向量库 | pgvector、Chroma | Qdrant、Milvus、Pinecone、Vespa |
-| 重排模型 | bge-reranker、Cohere Rerank | Cohere Rerank、jina-reranker、自托管 |
-| 评估 | RAGAS、DeepEval | RAGAS + 人工标注 + 线上反馈 |
-| 可观测 | LangSmith、Phoenix(Arize) | LangSmith、Langfuse、Phoenix |
+### 3.1 Knowledge correctness
 
-> 框架选择建议：**学习阶段用框架快速跑通，理解原理后在生产里倾向于"薄封装 + 自己掌控关键环节"**。框架的黑盒会让你在出问题时难以定位。
+- source 是否权威、完整、当前有效；
+- 冲突/时间版本是否建模；
+- 解析/OCR 是否保真；
+- ACL、owner、tenant 与数据分类是否正确。
 
----
+### 3.2 Retrieval correctness
 
-## 6. 如何使用这套文档
+- 必要 evidence 是否可达/被召回；
+- ANN 是否找回 exact neighbors；
+- fusion/rerank 是否把 evidence 保留到 context；
+- hard negatives、旧版本和未授权内容是否排除。
 
-- **快速过一遍**：只读每个文档的"原理"和"使用场景"部分，建立全局认知（约 2-3 小时）。
-- **动手实践**：边读 02/03/04 边搭一个真实知识库（你自己的笔记、某个开源项目文档都行）。
-- **深入工程**：在有了基线和评估后，回头精读 04/06/08，针对性优化。
+### 3.3 Generation correctness
 
-每个子文档结尾都有「本章小结」和「检验清单」，可以用来自测是否真的掌握了。
+- 关键 claim 是否正确；
+- citation 是否存在、蕴含、完整且来源合适；
+- 证据不足时是否澄清/拒答；
+- 冲突是否披露而非随意选择。
 
----
+### 3.4 Lifecycle correctness
 
-## 7. 学完后你应该能回答的问题（毕业测试）
+- dense/sparse/metadata/ACL 是否同 snapshot；
+- 增量更新是否无空窗/双版本；
+- cache 是否绑定安全域与知识版本；
+- 删除、回滚、恢复是否传播所有派生物。
 
-- 一个用户的提问从输入到拿到答案，中间经过了哪些环节？每个环节可能在哪里出错？
-- 为什么生产 RAG 普遍用"混合检索 + 重排"而不是纯向量检索？
-- 分块大小怎么定？重叠为什么需要？语义分块和递归分块各适合什么场景？
-- HNSW 索引为什么快？它牺牲了什么？
-- 我的 RAG 答错了，怎么判断是"没检索到" 还是"检索到了但模型没用好"？
-- GraphRAG / Agentic RAG 解决了基础 RAG 的什么短板？什么时候才值得上？
-- 怎么用数据证明"我的优化确实有效"？
+端到端回答分高不能替代后三层的可审计性。
 
 ---
 
-> 下一步：从 [01-RAG基础与核心原理](01-RAG基础与核心原理.md) 开始。
+## 4. 学习顺序
+
+```text
+阶段 A · 证据与基线
+01 概率管线、closed-book、oracle-context、引用语义
+
+阶段 B · 离线表示
+02 parse/chunk/evidence span
+03 embedding/exact-vs-ANN/index consistency
+
+阶段 C · 在线选择
+04 sparse+dense/fusion/rerank/candidate budget
+05 rewrite/decomposition/route/fidelity
+
+阶段 D · 仅按错误升级
+06 hierarchy/graph/agentic/structured/multimodal
+
+阶段 E · 证明与运营
+07 incomplete oracle/claim-citation/paired eval
+08 snapshot/CDC/cache/security/delete/DR
+```
+
+每一阶段都以 artifact 收尾：
+
+1. task taxonomy + oracle evidence；
+2. versioned chunk manifest；
+3. exact vs ANN curve；
+4. candidate-loss trace；
+5. query lineage 与 route confusion matrix；
+6. 高级架构同预算消融；
+7. claim-citation eval report；
+8. snapshot release + deletion receipt + restore drill。
+
+---
+
+## 5. 最小但严谨的基线
+
+不要固定某个 vendor/参数；用以下实验矩阵建立本领域基线：
+
+```text
+B0 closed-book
+B1 full/long-context（可承受的同一语料）
+B2 sparse BM25
+B3 dense exact → dense ANN
+B4 hybrid rank fusion
+B5 B4 + rerank
+B6 oracle context
+```
+
+固定：
+
+- knowledge/ACL snapshot；
+- query 分层与用户权限；
+- 最终 context token 和候选预算；
+- generator/prompt/grader 版本；
+- 候选/基线相同 query 与环境。
+
+报告：
+
+```text
+knowledge coverage
+evidence Recall@k / all-evidence success / nDCG
+claim correctness / citation correctness & completeness
+abstain coverage–risk
+cost/success + p95/p99
+worst slices + security failures
+```
+
+若 B0 已达标，检索可能没有必要；若 B6 仍低，先修生成/任务；只有 B6 高而 B5 低时，检索/数据升级才有明确空间。
+
+---
+
+## 6. 2025–2026 的前沿变化：从固定 RAG 到数据与控制循环
+
+近两年值得关注的不是“又多一个 RAG 缩写”，而是四个方向：
+
+1. **Agentic / reasoning RAG**：迭代选择数据源、拆解、多跳、证据充分性和停止；代价是随机性、成本与评测复杂度。
+2. **Graph/hierarchical retrieval 的查询—建库权衡**：GraphRAG local/global、DRIFT、LazyGraphRAG、RAPTOR 等把局部/全局检索和 upfront/query-time 成本放到同一设计空间。
+3. **Capability-level evaluation**：不仅评最终答案，还评 retrieval necessity、改写/路由保真、evidence coverage、冲突处理和停止；2025 的 RAGCap-Bench 是这一趋势的研究示例。
+4. **Data-centric Agentic RAG**：2026 ACL Findings 的 survey 强调数据收集、任务构建、评测和训练生命周期；这与生产中的 provenance/snapshot/delete 直接对应。
+
+这些研究/benchmark 是候选与启发，不是生产 SOTA 证明。应注明论文/预印本状态、harness、数据和成本，再在自己的分层任务上复验。
+
+---
+
+## 7. 工具选择原则
+
+框架和产品变化很快。选择 parser、embedding、vector/search store、reranker、eval 和 observability 时，验证：
+
+| 类别 | 关键 spike |
+|---|---|
+| Parser | 布局/表格/OCR/坐标保真、增量与许可证 |
+| Embedding | 领域 exact retrieval、prefix/截断、吞吐、版本钉死 |
+| Store | ANN recall–p99、过滤选择率、更新/删除、snapshot/restore |
+| Reranker | 长文截断、语言/hard negatives、candidate cost |
+| Framework | 状态/错误语义、可观测、版本迁移、能否绕过抽象 |
+| Eval | oracle 数据结构、Judge 校准、逐样本导出、统计复现 |
+| Trace | 内容 opt-in、ACL、artifact refs、schema 版本、删除 |
+
+工具表可以帮助建立候选集，但不应写成长期排行榜。关键业务契约要由自己的代码/测试掌握。
+
+---
+
+## 8. 常见反模式
+
+- 把 RAG 当作“加了就不幻觉”；
+- 没有 closed-book/long-context/oracle baseline 就追 GraphRAG；
+- 用固定 512 token、top-5 作为跨语料真理；
+- 只看向量相似度，不标最小 evidence span；
+- 只报 Recall@k，不区分 relevance oracle 是否完整；
+- 只检查答案有引用，不检查 claim–citation entailment；
+- query rewrite 改掉时间/地区/否定却不可追踪；
+- 为召回先跨租户搜索再 post-filter；
+- 更新时先删后插，或 dense/sparse 各自最新；
+- 删除源文档但保留摘要、图节点和语义 cache；
+- Agentic RAG 无全局预算、证据 ledger、no-progress 与 abstain。
+
+---
+
+## 9. 毕业追问树
+
+**定义**：RAG 选择的到底是“相关文本”还是“能支持 claim 的证据”？
+
+**机制**：query 如何经过 rewrite、ACL、retrieval、fusion、rerank 到 context？
+
+**假设**：知识存在吗？oracle 完整吗？ANN/截断/生成各自上限是什么？
+
+**反例**：旧政策语义最相似、引用真实却不支持结论、更新双版本、删除残留会怎样？
+
+**落地**：chunk/index/query/evidence/snapshot 的 schema 是什么？
+
+**评测**：如何做 pooled relevance、hard negatives、claim-citation、paired CI 与 cost/success？
+
+**运营**：如何 dual-read、原子切 alias、回滚、紧急 deny、lineage delete 和 restore？
+
+能沿这棵追问树答到底，才算掌握生产 RAG，而不只是会调用向量库。
+
+---
+
+> 下一步：[01-RAG基础与核心原理](01-RAG基础与核心原理.md)。
+>
+> 2025–2026 延伸：[Agentic RAG Survey（2025）](https://arxiv.org/abs/2501.09136) · [RAG Evaluation Survey（2025）](https://arxiv.org/abs/2504.14891) · [Data-Centric Agentic RAG Survey（ACL Findings 2026）](https://aclanthology.org/2026.findings-acl.78/) · [Microsoft GraphRAG](https://www.microsoft.com/en-us/research/project/graphrag/)

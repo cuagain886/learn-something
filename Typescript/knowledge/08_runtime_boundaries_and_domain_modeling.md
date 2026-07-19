@@ -238,7 +238,51 @@ function normalizeEvent(raw: WireEvent): EventV2 {
 
 ---
 
-## 10. 边界设计检查清单
+## 10. Schema 值同时服务三种契约，但三者不等价
+
+一个适合 Agent 工具边界的 Schema 值通常承担三项职责：
+
+```text
+Schema value
+  ├─ safeParse(unknown) -> 运行时 Output / ValidationIssue[]
+  ├─ Infer<typeof schema> -> TypeScript 静态 Output
+  └─ jsonSchema -> 模型或远端消费者看到的 wire input 描述
+```
+
+必须强调：JSON Schema 描述**输入线格式**，`Infer` 得到的可能是 transform/refine 后的领域输出。例如输入是 ISO 字符串，输出可以是 `Date`；输入是普通 string，输出可以是 `UserId` 品牌。模型侧 schema 不知道 TypeScript 的 unique-symbol brand，也不会执行 trim、数据库查询或跨字段业务校验。
+
+因此服务端 parser 始终是最终权威；把 JSON Schema 发给模型只能提升生成正确率，不能取消 unknown 边界。
+
+### unknown key policy 是授权面的一部分
+
+| 策略 | 行为 | 常见用途 |
+|---|---|---|
+| `strict` | 未声明字段直接报错 | Agent 工具参数、写 API、权限敏感入口 |
+| `strip` | 只构造白名单字段 | DTO 归一化、兼容旧客户端 |
+| `passthrough` | 保留未知字段 | 明确需要扩展字段的代理层 |
+
+`Omit<Input, "isAdmin">` 只改变静态视图，不会删除运行时对象里的 `isAdmin`。真正的白名单输出必须由 parser 新建对象。对动态键写入还应避免触发 `Object.prototype.__proto__` setter，可用 `Object.defineProperty` 或 null-prototype 字典，并在边界测试 prototype-pollution payload。
+
+### 缺失必须用 own property 判断
+
+```typescript
+Object.hasOwn(input, key)
+```
+
+`key in input` 会沿原型链查找；攻击者或错误 fixture 可以让继承属性冒充必填字段。optional schema 也应在对象组合器层决定“键可以缺失”，而不是无条件把缺失字段写成 `undefined`，否则会破坏 `exactOptionalPropertyTypes` 所表达的协议差异。
+
+### ValidationIssue 是可观测协议，不应泄漏原始数据
+
+错误至少需要稳定 code、结构化 path 和可读 message。路径使用 JSON Pointer 等标准形式后，可直接映射到表单字段、tool argument 和日志聚合键。错误对象默认只记录 `string/array/object/null` 等安全摘要；密码、token、完整 prompt 和个人数据不应因为验证失败被复制进日志。
+
+可运行实现与攻击性 fixture 见：
+
+- [Schema 内核](../code/src/17-schema.ts)
+- [unknown、strict/strip、品牌与 JSON Schema 实验](../code/src/17-runtime-validation.ts)
+
+---
+
+## 11. 边界设计检查清单
 
 - `JSON.parse`、环境变量、存储读取结果先视为 `unknown`。
 - 验证包含语法、结构、语义三层，而非只检查 `typeof`。
@@ -254,4 +298,3 @@ function normalizeEvent(raw: WireEvent): EventV2 {
 ## 一句话总结
 
 TypeScript 的安全边界止于编译器可见代码。真正可靠的系统会从 `unknown` 开始验证，在构造时建立领域不变量，并用可辨识联合让非法状态尽量无法表达。
-

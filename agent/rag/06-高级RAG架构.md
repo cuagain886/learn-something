@@ -43,12 +43,12 @@
 
 - **Contextual Embeddings**：上述增强后的 chunk 拿去嵌入。
 - **Contextual BM25**：增强后的 chunk 也建一份 BM25 索引。
-- 两者结合，**检索失败率降低约 49%**；**再叠加重排，降低约 67%**。
+- Anthropic 在其特定知识库 benchmark 中报告：Contextual Embeddings 与 Contextual BM25 结合使 top-20 检索失败率下降 49%，再加重排下降 67%。这是该实验设置下的相对结果，迁移到自己的语料前必须复测。
 
 ### 2.4 成本与工程技巧
 
 - 听起来很贵——要对**每个 chunk 都调一次 LLM**生成上下文。
-- **关键省钱技巧：Prompt Caching（提示缓存）**。生成上下文时，每个 chunk 的 prompt 都包含"整篇文档"作为前缀。用 prompt caching 把这个文档前缀缓存住，后续 chunk 复用，**成本降低高达 90%、延迟降低 2 倍以上**。这让 Contextual Retrieval 在工程上变得可行。
+- **可评估的降本技巧：Prompt Caching**。生成上下文时，每个 chunk 的 prompt 都包含相同文档前缀；若模型/供应商的缓存语义、最小前缀和 TTL 匹配，可复用前缀。实际命中、成本和延迟依 API 与文档批次而变，应记录 cache hit 和完整建库成本，不能把个案比例外推。
 - 这是"用一次性的建库成本，换长期的检索质量提升"，对**高价值、相对静态**的知识库很划算。
 
 ### 2.5 与 Late Chunking 对比
@@ -117,8 +117,8 @@ Level 0 (原始 chunk): chunk chunk chunk ...
 
 ### 4.3 优势与代价
 
-- **优势**：能回答关系型、多跳、全局总结型问题；微软研究显示在全局总结任务上，**比传统 RAG 节省 26%~97% 的 token**（因为用社区摘要而非塞海量原文）。
-- **代价（很重）**：**建库极其昂贵和复杂**——要对全部文档做 LLM 实体/关系抽取（大量 LLM 调用）、构图、社区检测、生成摘要。建库时间和成本是基础 RAG 的数倍到数十倍，且图谱维护/更新复杂。
+- **优势**：能回答关系型、多跳、全局总结型问题；微软 GraphRAG 研究在其全局总结实验中报告了显著 token 差异，但范围会随数据集、查询、社区摘要层级和比较基线改变，不应外推为固定的生产节省率。
+- **代价（很重）**：要对文档做实体/关系抽取、消歧、构图、社区检测和摘要。相对成本取决于语料、抽取 prompt、模型和增量策略，不能用固定倍数概括；更关键的是更新、删除和实体合并会让维护语义复杂化。
 - **混合趋势**：实践中常用 **Hybrid RAG = 图谱 + 向量 + BM25**，结合结构化关系和语义检索，并提升可解释性（能看到答案是沿哪些关系推出来的）。
 
 ### 4.4 适用
@@ -156,7 +156,7 @@ Level 0 (原始 chunk): chunk chunk chunk ...
 
 - **代价**：多次 LLM 调用 + 多次检索，**延迟高、成本高、行为不确定性强**（更难调试和保证稳定）。
 - **适用**：复杂多跳问答、研究型任务（deep research）、需要跨多源整合、需要调用工具/实时数据的场景。
-- **趋势**：常用 LangGraph 等编排框架实现状态机式的 Agent 检索循环（2026 主流做法）。配合分层检索接口（hierarchical retrieval interfaces）来扩展。
+- **实现**：可用显式状态机/工作流或 Agent runtime 管理检索循环；框架不是能力来源。关键是检索接口契约、停止条件、预算、checkpoint 和中间证据评测。
 
 ---
 
@@ -205,7 +205,7 @@ Level 0 (原始 chunk): chunk chunk chunk ...
 
 ```
 基础 RAG（混合检索+重排）效果够吗？
-  够 → 别折腾，就用基础 RAG ✅（90% 场景）
+  够 → 别折腾，就用满足 SLO 的最简单基线 ✅
   不够 → 用评估定位是哪类问题失败：
 
     chunk 缺上下文导致检索不准      → Contextual Retrieval / Late Chunking
@@ -220,10 +220,169 @@ Level 0 (原始 chunk): chunk chunk chunk ...
 
 ---
 
-## 10. 本章小结
+## 10. 深入：按错误类型、更新语义与控制复杂度选架构
+
+### 10.1 架构不是能力名词，而是对某个错误的干预
+
+| 观察到的错误 | 先做的诊断 | 可能干预 | 不应先做 |
+|---|---|---|---|
+| answer span 被分块切断 | oracle span containment | parent-child/evidence window | 直接上多 Agent |
+| chunk 指代丢失 | exact retrieval + contextual ablation | contextual/late chunking | 假设所有文档需 LLM contextualize |
+| 全局主题问题失败 | oracle full-doc/summary baseline | RAPTOR/GraphRAG global/LazyGraphRAG | 用局部 top-k 硬答 |
+| 关系多跳失败 | 标注 hop/entity/edge | graph/local traversal/iterative retrieval | 只增加 top-k |
+| 实时精确数值错 | 检查数据源与时效 | SQL/API/structured RAG | 把表格全文向量化后计算 |
+| 首次检索不全 | candidate oracle + rewrite ablation | multi-query/iterative/agentic | 无界循环 |
+| 检索有证据却生成错 | oracle context 与 citation eval | context selection/generator/verification | 重建所有索引 |
+| 简单题成本过高 | 任务分层 | adaptive/early exit | 所有题跑 GraphRAG/Agentic |
+
+每个高级架构都应对应一个可观测错误和一个可证伪假设。
+
+### 10.2 Contextual/Late Chunking 的更新语义
+
+显式 contextualization 产生派生文本：
+
+```yaml
+source_chunk_hash: ...
+context_text: ...
+context_generator_version: ...
+full_document_version: ...
+prompt_hash: ...
+taints: [inherited_from_source]
+```
+
+只要原 chunk、全文、prompt 或生成模型变化，派生上下文可能需要失效/重建。LLM 生成的 context 可能引入事实，索引时应将其视为检索提示而非可引用证据；最终引用仍指向原始 source span。
+
+Late Chunking 则把文档内其它 token 的信息编码进块向量。文档任一部分变化都可能改变多个块的表示，增量更新粒度可能接近整文档重嵌入；需按模型最大长度和长文档切窗定义边界。
+
+### 10.3 RAPTOR 的版本、摘要误差与删除传播
+
+摘要树是派生数据 DAG，不只是“一棵建好就不变的树”：
+
+```text
+leaf chunks v7
+  → clustering v3 + seed
+  → summaries level-1 v5
+  → clustering level-2
+  → root summary
+```
+
+风险：
+
+- 低层摘要遗漏/扭曲后向上累积；
+- 聚类变化导致大量上层节点重写；
+- 新文档插入改变主题簇，局部更新不再等价于全量重建；
+- 删除原文后，上层摘要仍保留其事实；
+- 检索命中摘要却无法映射到具体 evidence span。
+
+工程要求：保存 child IDs、source lineage、cluster/model/prompt 版本；摘要只用于导航/候选，关键 claim 下钻到叶子证据；删除沿 DAG 失效所有派生摘要；用局部 rebuild 与周期全量 rebuild 比较漂移。
+
+### 10.4 GraphRAG 的图不是 ground truth
+
+GraphRAG 建图包含多个有损步骤：实体抽取、共指消解、关系抽取、实体合并、社区检测、摘要。每一层都需置信和来源：
+
+```yaml
+edge:
+  subject: entity:ACME
+  predicate: acquired
+  object: entity:Beta
+  evidence_spans: [doc17:182-244]
+  extraction_version: rel-extract-v6
+  valid_time: [2025-04-01, null]
+  confidence: 0.82
+  status: asserted_not_verified
+```
+
+遍历到一条边不证明事实成立；答案引用应回到原始证据。实体错误合并会产生“关系幻觉”，错误拆分则断开多跳路径。
+
+### 10.5 Graph 更新与删除
+
+增量文档可能：
+
+- 新增/删除实体和边；
+- 改变同名实体消歧；
+- 使社区结构和摘要失效；
+- 与旧时间版本矛盾；
+- 携带不同 ACL，不能在社区摘要中泄露。
+
+可选策略：
+
+| 策略 | 优点 | 风险 |
+|---|---|---|
+| append + 局部实体合并 | 更新快 | 图/社区逐渐漂移 |
+| 局部社区重算 | 成本适中 | 边界效应、与全量结果不同 |
+| 周期全量 snapshot | 一致性强 | 成本高、切换复杂 |
+| bitemporal graph | 可回答历史状态 | 数据/查询/删除更复杂 |
+
+所有派生图节点/社区摘要必须继承最严格 ACL 或按安全域分图；不能先跨租户构图再在答案末尾过滤。
+
+### 10.6 GraphRAG 的 Local / Global / DRIFT / Lazy 路线
+
+Microsoft GraphRAG 生态公开了 local、global，并继续出现 DRIFT（结合社区信息与局部跟进）和 LazyGraphRAG（减少昂贵的预先摘要、把更多工作推到查询时）等路线。这些说明“GraphRAG”不是一个固定算法：
+
+- **Local**：实体中心邻域，适合具体关系；
+- **Global**：社区摘要 map/reduce，适合全局主题；
+- **DRIFT**：以社区信息为起点，生成细化跟进；
+- **LazyGraphRAG**：权衡较低 upfront index 与更高/更动态 query 工作。
+
+它们的比较只对具体数据、query 类型、token/延迟预算成立。2025/2026 的官方研究结果与实现更新应视作候选来源，不是跨领域 SOTA 保证。
+
+### 10.7 Agentic RAG 的控制状态
+
+Agentic RAG 至少维护：
+
+```yaml
+question_contract: ...
+open_subquestions: [...]
+evidence_ledger:
+  - claim_or_hop: ...
+    source_ref: ...
+    supports: true
+    trust: ...
+    time: ...
+query_history: [...]
+budget:
+  retrievals_left: 4
+  tokens_left: 9000
+  deadline: ...
+stop_reason: evidence_sufficient | budget | no_progress | conflict | abstain
+```
+
+“模型觉得够了”不是稳定停止条件。可组合：所有必要 subquestion 有证据、关键 claim 至少一个权威来源、冲突已解决/披露、连续两轮无新增证据、预算/deadline 触顶。
+
+### 10.8 Agentic RAG 的评测不能只看最终答案
+
+按能力分层：
+
+- 是否正确判断 retrieval necessity；
+- query rewrite/decomposition 保真；
+- datasource/tool route 与权限；
+- evidence coverage、重复查询、无进展；
+- 冲突/时效处理；
+- 停止/abstain；
+- cost/success 与 `pass^k`。
+
+2025 的 Agentic RAG surveys 和 RAGCap-Bench 等工作体现了对中间能力评测的关注；新 benchmark 仍可能受领域、harness 和污染限制，生产应构建自己的 capability slices。
+
+### 10.9 高级架构的同预算消融
+
+```text
+A0 hybrid + rerank
+A1 + contextual/late chunk
+A2 + hierarchy (RAPTOR-like)
+A3 + graph local/global variant
+A4 + iterative fixed workflow
+A5 + agentic controller
+A6 oracle source/router/evidence
+```
+
+固定语料 snapshot、生成器和最终 token；对全局/局部/多跳/实时/结构化任务分层，分别报告建库成本、增量更新/删除延迟、查询 p95、cost/success、citation correctness 和风险。`A6` 用于估计控制器/检索的上限。
+
+---
+
+## 11. 本章小结
 
 - 高级架构都是**针对基础 RAG 的具体短板**的升级，**先用评估证明基础不够再上**。
-- **Contextual Retrieval**：建库时给每个 chunk 加 LLM 生成的上下文，降低检索失败 49%~67%；用 Prompt Caching 把成本压下来。
+- **Contextual Retrieval**：建库时给每个 chunk 加 LLM 生成的上下文；Anthropic 在特定 benchmark 报告 top-20 检索失败率相对下降 49%/67%，自己的语料需复测。
 - **RAPTOR**：递归摘要树，让一次检索同时覆盖细节和全局总结。
 - **GraphRAG**：抽实体关系建图谱，解决关系型/多跳/全局问题，但建库极贵，慎用。
 - **Agentic RAG**：把检索变成 Agent 推理循环里的动态决策，强但贵且不确定。
@@ -231,7 +390,7 @@ Level 0 (原始 chunk): chunk chunk chunk ...
 - **Adaptive RAG**：按问题复杂度动态选检索强度，平衡质量/成本/延迟。
 - 还有多模态、结构化(Text-to-SQL)、异构源、集成等工程方向。
 
-## 11. 检验清单
+## 12. 检验清单
 
 - [ ] 能说出每种高级架构解决基础 RAG 的哪个具体短板。
 - [ ] 能解释 Contextual Retrieval 的做法，以及 Prompt Caching 为什么是它工程可行的关键。
@@ -239,7 +398,12 @@ Level 0 (原始 chunk): chunk chunk chunk ...
 - [ ] 理解 GraphRAG 的强大与昂贵，并知道它适合/不适合什么场景。
 - [ ] 能区分固定管线 RAG 和 Agentic RAG。
 - [ ] 拿到一个具体失败场景，能用决策树选出合适的升级方案。
+- [ ] 能解释 contextual/RAPTOR/GraphRAG 的派生数据 lineage 与删除传播。
+- [ ] 能区分 GraphRAG local/global/DRIFT/Lazy 路线的查询—建库权衡。
+- [ ] 能为 Agentic RAG 设计 evidence ledger、停止条件和同预算消融。
 
 ---
 
 > 下一步：[07-RAG评估与可观测性](07-RAG评估与可观测性.md) —— 从"玄学调参"走向"工程"的分水岭。
+>
+> 前沿参考：[Microsoft GraphRAG project](https://www.microsoft.com/en-us/research/project/graphrag/) · [DRIFT Search](https://www.microsoft.com/en-us/research/blog/introducing-drift-search-combining-global-and-local-search-methods-to-improve-quality-and-efficiency/) · [LazyGraphRAG](https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/) · [RAGCap-Bench（2025 预印本）](https://arxiv.org/abs/2510.13910) · [Data-Centric Agentic RAG Survey（ACL Findings 2026）](https://aclanthology.org/2026.findings-acl.78/)

@@ -236,7 +236,28 @@ type B = IsString<"a" | 1>; // false
 
 ---
 
+## 10. 推断操作符不会冻结、清洗或验证运行时值
+
+三个常见误解来自把 checker 操作当成 runtime 操作：
+
+- `as const` 递归保留 literal/readonly 类型，但不调用 `Object.freeze`；Reflect、外部 JS 和别名仍可修改对象。
+- fresh object 的 excess-property check 只发生在特定目标位置；先保存到变量再赋值时，额外字段仍真实存在。
+- `satisfies` 在编译期验证可赋值性并提供上下文类型，emit 后没有 validator 函数。
+
+```typescript
+const value = { method: "GET", debug: true } as const;
+const endpoint: { readonly method: "GET" } = value;
+
+"debug" in endpoint; // true，赋值没有清洗字段
+Object.isFrozen(value); // false
+```
+
+`NoInfer<T>` 也只改变候选收集：它告诉 checker 某个位置负责“验证已有 T”，不负责“扩大 T”；运行时参数传递完全不变。
+
+完整的编译期/运行时对照见 [第 16 课：推断信息流](../code/src/16-inference-satisfies.ts)。官方语义参考：[satisfies](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html) 与 [NoInfer](https://www.typescriptlang.org/docs/handbook/utility-types.html#noinfertype)。
+
+---
+
 ## 一句话总结
 
 TypeScript 推断是双向约束求解。优秀的类型设计会保存字面量精度和参数相关性，并用 `satisfies` 做校验；糟糕的类型设计则靠宽泛联合与断言把信息主动抹掉。
-

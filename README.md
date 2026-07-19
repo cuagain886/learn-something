@@ -51,7 +51,7 @@
 | 🐍 **Python** | 语言 + AI 生态 | 语言核心 → **LangChain / LangGraph 工程实践** |
 | 🎨 **前端** | 三件套 + 工程化 | HTML/CSS/JS → 异步 → 模块化 → Vite |
 | 🔷 **TypeScript** | 类型系统专精 | 结构化类型 → 泛型编程 → 工程配置 |
-| 🤖 **AI Agent** | 应用层工程化 | 核心模式 → RAG → 编排 → 评估 → 生产化 |
+| 🤖 **AI Agent** | 应用层工程化 | 核心模式 → RAG → 编排 → 评估 → 生产化 → 系统工程 |
 | 🌐 **Nginx** | Web 服务器源码深挖 | 事件循环 → HTTP 状态机 → upstream → TLS → 性能调优 |
 | 🔌 **RPC** | 远程调用协议全链路 | IDL → Protobuf 线格式 → gRPC/HTTP2 → 失败语义与重试 |
 | 📨 **消息队列** | MQ 选型与核心机制 | Kafka / RabbitMQ / Redis Stream 深度对比 |
@@ -209,16 +209,17 @@ cd Typescript/code && npm install && npm run dev
 
 > 面向**应用层 / Agent 开发者**，聚焦如何工程化地搭出可用、可靠、可上线的 Agent，不深入 Transformer 内部。入口见 [`agent/INDEX.md`](agent/INDEX.md)。
 
-**6 大专题，约 44 篇文章**：
+**7 大专题，58 篇文章（含总索引与深度审计台账）**：
 
 | 专题 | 目录 | 核心内容 |
 |------|------|---------|
-| 🧠 **Agent 核心** | [`agent-core`](agent/agent-core) | Agent 循环与 ReAct / 工具使用 / 反思 / 规划 / 多智能体 / 模式选择 |
+| 🧠 **Agent 核心** | [`agent-core`](agent/agent-core) | Agent 循环 / 工具契约 / 反思 / 规划 / 多智能体 / POMDP 与 belief state / ToT、MCTS 与测试时计算 |
 | 📚 **RAG** | [`rag`](agent/rag) | 分块策略 / 嵌入与向量库 / 混合检索与重排 / 查询改写路由 / 高级架构 / 评估 |
-| 🔌 **上下文工程** | [`context-engineering`](agent/context-engineering) | MCP 协议 / 上下文工程基础 / Agent 记忆系统 / 上下文管理 / 反模式 |
-| 🕸️ **编排** | [`orchestration`](agent/orchestration) | 五种工作流模式 / 多智能体拓扑 / 状态管理 / 通信协议 / 框架选型 |
+| 🔌 **上下文工程** | [`context-engineering`](agent/context-engineering) | MCP 2025-11-25 / ContextBlock 与装配器 / 双时间记忆 / 摘要保真 / manifest 与重放 |
+| 🕸️ **编排** | [`orchestration`](agent/orchestration) | join/cancel / ownership 与背压 / checkpoint-replay / A2A 1.0 / 框架故障选型 / SLO |
 | 📊 **评估与可观测** | [`evaluation`](agent/evaluation) | 为何评估更难 / 指标维度 / LLM 裁判 / 数据集与 CI / 追踪 / 线上持续评估 |
 | 🛡️ **生产化** | [`production`](agent/production) | 安全威胁全景 / Prompt 注入防御 / 最小权限隔离 / 护栏与人类介入 / 成本延迟治理 |
+| ⚙️ **系统工程** | [`systems-engineering`](agent/systems-engineering) | Harness / 工具契约 / 持久执行 / 长任务 / MCP 与 A2A / 并发一致性 / 可靠性统计 / 安全控制平面 / 参考架构 |
 
 > **黄金法则**：从简单开始，按需增加复杂度。先把「单 Agent + ReAct + 好工具」做扎实——它能搞定现实中大多数任务。
 

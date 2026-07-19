@@ -4,10 +4,50 @@
   "private": true,
   "type": "module",
   "description": "TypeScript 全面学习示例项目（带详细中文注释，按编号循序渐进）",
+  "engines": {
+    "node": ">=24.12.0"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc",
-    "start": "tsx src/01-basic-types.ts"
+    "build": "tsc && node scripts/copy-course-assets.mjs",
+    "start": "tsx src/01-basic-types.ts",
+    "lesson:foundations": "tsx src/01-basic-types.ts && tsx src/02-variables-inference.ts && tsx src/03-functions.ts && tsx src/04-interfaces.ts && tsx src/05-type-aliases-union.ts",
+    "lesson:core-types": "tsx src/06-classes.ts && tsx src/07-generics.ts && tsx src/08-type-narrowing.ts && tsx src/09-advanced-types.ts && tsx src/10-utility-types.ts",
+    "lesson:core-types:dist": "npm run build && node dist/06-classes.js && node dist/07-generics.js && node dist/08-type-narrowing.js && node dist/09-advanced-types.js && node dist/10-utility-types.js",
+    "lesson:modules": "tsx src/11-modules/11-modules.ts",
+    "lesson:modules:dist": "npm run build && node dist/11-modules/11-modules.js",
+    "lesson:promise": "tsx src/12-async.ts",
+    "lesson:decorators": "tsx src/13-decorators.ts",
+    "lesson:declarations": "tsx src/14-declaration-files.ts",
+    "lesson:declarations:dist": "npm run build && node dist/14-declaration-files.js",
+    "lesson:events": "tsx src/15-practice.ts",
+    "lesson:intermediate": "tsx src/11-modules/11-modules.ts && tsx src/12-async.ts && tsx src/13-decorators.ts && tsx src/14-declaration-files.ts && tsx src/15-practice.ts",
+    "lesson:intermediate:dist": "npm run build && node dist/11-modules/11-modules.js && node dist/12-async.js && node dist/13-decorators.js && node dist/14-declaration-files.js && node dist/15-practice.js",
+    "lesson:inference": "tsx src/16-inference-satisfies.ts",
+    "lesson:validation": "tsx src/17-runtime-validation.ts",
+    "lesson:async": "tsx src/18-async-control.ts",
+    "lesson:tools": "tsx src/19-typed-tool-system.ts",
+    "lesson:compiler": "tsx src/20-compiler-api.ts",
+    "lesson:advanced-core": "tsx src/16-inference-satisfies.ts && tsx src/17-runtime-validation.ts && tsx src/18-async-control.ts && tsx src/19-typed-tool-system.ts && tsx src/20-compiler-api.ts",
+    "lesson:advanced-core:dist": "npm run build && node dist/16-inference-satisfies.js && node dist/17-runtime-validation.js && node dist/18-async-control.js && node dist/19-typed-tool-system.js && node dist/20-compiler-api.js",
+    "lesson:agent-runtime": "tsx src/agent-runtime/demo.ts",
+    "lesson:agent-runtime:dist": "npm run build && node dist/agent-runtime/demo.js",
+    "lesson:runtime": "tsx src/22-javascript-runtime-model.ts",
+    "lesson:resources": "tsx src/23-explicit-resource-management.ts",
+    "lesson:streaming": "tsx src/24-streaming-sse.ts",
+    "lesson:context": "tsx src/25-async-context.ts",
+    "lesson:decorators-deep": "tsx src/26-standard-decorators-internals.ts",
+    "lesson:type-performance": "tsc -p tsconfig.type-performance.json --extendedDiagnostics",
+    "lesson:event-loop": "tsx src/28-event-loop-scheduling.ts",
+    "lesson:errors": "tsx src/29-error-modeling.ts",
+    "lesson:testing": "tsx --test src/30-testing-contracts.test.ts",
+    "lesson:memory": "tsx --test src/31-memory-lifecycle.test.ts",
+    "lesson:workers": "node --test src/32-worker-threads.test.ts",
+    "lesson:workers:dist": "npm run build && node --test dist/32-worker-threads.test.js",
+    "lesson:mcp-protocol": "tsx src/33-mcp-protocol/demo.ts",
+    "lesson:mcp-protocol:test": "tsx --test src/33-mcp-protocol/protocol.test.ts",
+    "lesson:mcp-protocol:dist": "npm run build && node dist/33-mcp-protocol/demo.js && node --test dist/33-mcp-protocol/protocol.test.js",
+    "test": "tsx --test src/agent-runtime/runner.test.ts src/30-testing-contracts.test.ts src/31-memory-lifecycle.test.ts src/32-worker-threads.test.ts src/33-mcp-protocol/protocol.test.ts"
   },
   "keywords": [
     "typescript",
@@ -16,8 +56,8 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^25.9.2",
-    "tsx": "^4.22.4",
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.1",
     "typescript": "^6.0.3"
   }
 }

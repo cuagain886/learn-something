@@ -164,7 +164,7 @@ type Events = {
     error: { cause: unknown; retryable: boolean };
 };
 
-interface Emitter<E extends Record<PropertyKey, unknown>> {
+interface Emitter<E extends object> {
     on<K extends keyof E>(name: K, handler: (payload: E[K]) => void): () => void;
     emit<K extends keyof E>(name: K, payload: E[K]): void;
 }
@@ -175,12 +175,46 @@ interface Emitter<E extends Record<PropertyKey, unknown>> {
 ```typescript
 type EmitArgs<T> = [T] extends [void] ? [] : [payload: T];
 
-interface BetterEmitter<E extends Record<PropertyKey, unknown>> {
+interface BetterEmitter<E extends object> {
     emit<K extends keyof E>(name: K, ...args: EmitArgs<E[K]>): void;
 }
 ```
 
 `[T]` 包裹用于避免条件类型对联合分发。
+
+### 事件表约束不要误伤 interface
+
+`Record<string, unknown>` 表示“任意字符串键都可读且值为 unknown”，它比“这是一个有限事件映射”更强。普通 interface 没有隐式字符串索引签名，因而可能无法满足该约束。若实现只使用 `keyof E`，通常写 `E extends object`，再把内部键限制在 `keyof E` 即可；不要为了迎合错误约束强迫用户把 interface 改成 type alias。
+
+### 类型安全只解决 payload 相关性，分发协议仍需显式设计
+
+生产级事件 API 至少还要定义：
+
+- **快照语义**：dispatch 期间新增 listener 是否参与当前轮？删除 listener 是否立即生效？
+- **重入语义**：`once` 应在执行用户回调前取消，否则回调同步 emit 会再次命中；
+- **失败语义**：首个 throw 立即终止、继续执行后聚合，还是把错误转成专门事件？
+- **生命周期**：`on` 是否返回幂等 unsubscribe？AbortSignal 后是否删除强引用和 abort listener？
+- **同步/异步**：同步总线如何处理 listener 返回 Promise 后发生的 rejection？
+
+TypeScript 有一个容易漏掉的规则：目标回调返回 `void` 时，实现可以返回任意值，因此 async 函数可以赋给 `() => void`。同步总线若不观察返回值，就可能制造未处理 rejection。可以把回调返回类型收紧为 `undefined`：
+
+```typescript
+type SyncListener<T> = (payload: T) => undefined;
+
+declare function onToken(listener: SyncListener<string>): void;
+
+onToken((token) => {
+    console.log(token);
+    return undefined;
+});
+
+// Promise<void> 不能赋给 undefined
+// onToken(async (token) => save(token));
+```
+
+另一种方案是明确把系统设计为异步分发器，收集 `PromiseLike<void>`，定义串行/并行、错误聚合、取消和背压语义。不能把两种模型混在一个未说明的 `void` 签名里。
+
+完整实现与重入测试见 [第 15 课：可重入、可取消的类型安全事件系统](../code/src/15-practice.ts)。
 
 ---
 
@@ -300,4 +334,3 @@ export function loadConfig(): ConfigView {
 ## 一句话总结
 
 公共类型是产品接口，不是实现的副产物。它应保存参数关系、限制非法组合、隐藏内部细节，并像运行时代码一样接受兼容性设计与自动化测试。
-

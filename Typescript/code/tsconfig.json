@@ -10,7 +10,9 @@
 
     // 编译时包含哪些内置类型库（如 Promise、Map、字符串方法等）。
     // 不写时会根据 target 自动推断；这里显式写出便于理解。
-    "lib": ["ES2022"],
+    // ESNext.Disposable 提供 using/await using、DisposableStack 等显式资源管理类型。
+    // 运行环境 Node 24 原生实现对应 Symbol 与 Stack；更老环境需要 polyfill。
+    "lib": ["ES2022", "ESNext.Disposable", "ESNext.Decorators"],
 
     // 引入哪些「全局类型」包。["node"] 表示加载 @types/node，
     // 这样 console、setTimeout、process、globalThis 等 Node 全局 API 才有类型。
@@ -26,6 +28,14 @@
     // 对初学者更友好。（若要用纯 Node 运行，则应改为 "NodeNext"。）
     "moduleResolution": "Bundler",
 
+    // 第 32 课直接以 Node 24 type stripping 运行 .ts 源码，因此本地 import 写显式 .ts；
+    // tsc emit 时把相对路径中的 .ts/.mts 等改写为 .js/.mjs，保证 dist 仍可由 Node ESM 运行。
+    "rewriteRelativeImportExtensions": true,
+
+    // 保留普通 import/export 的书写语义，仅删除 import type/export type。
+    // 它迫使源码明确区分类型导入，减少“tsc 帮忙改写后能跑、原生 Node 却失败”的错位。
+    "verbatimModuleSyntax": true,
+
     // 允许用 `import x from 'y'` 的写法导入 CommonJS 模块（提升互操作性）。
     "esModuleInterop": true,
 
@@ -36,6 +46,27 @@
     // 一键开启所有严格检查（强烈建议初学就打开，养成好习惯）。
     // 它等价于同时开启 strictNullChecks、noImplicitAny、strictFunctionTypes 等一系列选项。
     "strict": true,
+
+    // strict 之外仍建议显式开启的高价值检查：
+    // 动态索引和数组下标可能越界，因此读取结果自动包含 undefined。
+    "noUncheckedIndexedAccess": true,
+
+    // 区分「属性缺失」与「属性存在但值是 undefined」。这对 PATCH DTO、
+    // Object.hasOwn / in 判断、对象展开和 JSON 序列化都很重要。
+    "exactOptionalPropertyTypes": true,
+
+    // 只有索引签名提供的属性必须用 obj['key'] 访问，提醒读者该键不是固定契约。
+    "noPropertyAccessFromIndexSignature": true,
+
+    // 子类重写父类成员时必须写 override，避免父类重命名后子类悄悄变成无关方法。
+    "noImplicitOverride": true,
+
+    // 控制流完整性检查：所有分支必须显式返回；switch 不允许意外贯穿。
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // 仅为副作用而导入的模块也必须能够解析，避免拼错文件名却没有类型错误。
+    "noUncheckedSideEffectImports": true,
 
     // 这两个在学习项目里关掉：示例中经常声明了变量/参数却不使用，
     // 否则会因为「未使用」而报错，打断学习节奏。真实项目里建议开启。

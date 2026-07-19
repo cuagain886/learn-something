@@ -1,4 +1,4 @@
-# 03 · 类型收窄实战模式 ⭐⭐
+# 03 · 控制流分析与类型收窄实战 ⭐⭐⭐
 
 > 类型收窄（Type Narrowing）= 在一个代码分支中，让 TypeScript 自动把"宽类型"缩小为"窄类型"。这是 TS 类型系统最有实用价值的能力。
 
@@ -167,9 +167,13 @@ function isString(value: unknown): value is string {
 // 数组的 filter 使用类型谓词自动收窄
 const values: (string | number)[] = ["a", 1, "b", 2];
 const strings: string[] = values.filter(isString);  // ✅ 自动得到 string[]
-// 对比：values.filter(v => typeof v === "string") 返回 (string | number)[]
-//      因为箭头函数的返回类型不是类型谓词，TS 不会自动收窄！
+
+// TypeScript 5.5+ 对满足特定条件的简单函数还能推断类型谓词：
+const inferredStrings = values.filter(value => typeof value === "string");
+// inferredStrings: string[]
 ```
+
+谓词推断不是“任意 boolean 函数都能收窄”。函数需要有单一布尔返回、没有参数修改，并且判断能形成 `value is T` 的双向含义。复杂判断应显式写 predicate，并为其运行时逻辑写测试。
 
 **实战模式**：
 
@@ -257,21 +261,30 @@ function renderState(state: State): string {
 
 ## 7. 收窄失效场景 & 解决方案
 
-### 场景 1：收窄在闭包中失效
+### 场景 1：被捕获变量可能在闭包执行前改变
 
 ```typescript
-function foo(x: string | null) {
-    if (x) {
-        setTimeout(() => {
-            console.log(x.length);  // ❌ TS 报错！x 可能变成 null 了
-        }, 1000);
+function schedule(value: string | null) {
+    let current = value;
+    if (current !== null) {
+        const task = () => {
+            // current 在闭包创建后仍可能被重新赋值，因此不能依赖旧收窄。
+            // console.log(current.length); // ❌ current 可能是 null
+        };
+        current = null;
+        setTimeout(task, 1000);
     }
 }
-// 原因：TS 不知道 setTimeout 执行时 x 是否还是非 null
-// 解决：用 const 捕获当前值
-//   const captured = x;
-//   setTimeout(() => console.log(captured.length), 1000);
+
+// 解决：在已经证明的分支中捕获不可重新赋值的快照
+function scheduleSafe(value: string | null) {
+    if (value === null) return;
+    const captured = value;
+    setTimeout(() => console.log(captured.length), 1000);
+}
 ```
+
+现代 TypeScript 能在一些“最后一次赋值之后创建的闭包”中保留收窄，但前提必须可证明。不要把某个版本的优化当作并发不变量；共享对象仍可能被其他代码修改。
 
 ### 场景 2：在条件外部收窄丢失
 
@@ -285,6 +298,181 @@ function bar(x: string | number) {
 // 若 isStr 使用 let 且后来被改写，或判断被封装进返回 boolean（而非类型谓词）
 // 的普通函数，编译器才可能失去 value 与判断结果之间的关联。
 ```
+
+---
+
+## 8. Checker 维护的是路径事实，不是改写原类型
+
+```typescript
+function parse(value: string | number | null): string {
+    if (value === null) return "missing";
+
+    if (typeof value === "number") {
+        return value.toFixed(2);
+    }
+
+    return value.toUpperCase();
+}
+```
+
+控制流图中的每条路径积累不同事实：
+
+```text
+入口：string | number | null
+  ├─ value === null → null → return
+  └─ 非 null：string | number
+       ├─ typeof number → number → return
+       └─ 剩余路径 → string
+```
+
+提前 return 能让后续路径排除已处理成员，这叫基于可达性的控制流分析。变量的**声明类型**仍然没有改变；以后赋值仍按原声明类型检查。
+
+赋值会生成新事实：
+
+```typescript
+let value: string | number = "ready";
+value; // 当前类型 string
+value = 42;
+value; // 当前类型 number
+```
+
+理解“声明类型”和“当前流类型”能解释为什么一次收窄不会永久锁死变量。
+
+---
+
+## 9. 自定义谓词是证明声明，不是证明实现
+
+```typescript
+function isUser(value: unknown): value is { id: string } {
+    return true; // 编译器无法证明这个实现是谎言
+}
+```
+
+TypeScript 只检查返回表达式是 boolean，不会验证它与谓词类型逻辑等价。谓词作者承担和类型断言类似的证明义务，而且错误会污染所有调用方。
+
+稳健谓词应：
+
+- 参数从 `unknown` 开始；
+- 检查 null、数组与对象边界；
+- 检查每个以后会使用的字段；
+- 不执行隐藏副作用；
+- 对合法、缺字段、错类型、极端输入写测试；
+- 不把“能读取一个字段”夸大成完整领域类型。
+
+如果需要错误列表、默认值、转换和跨字段不变量，返回 parse `Result` 比 boolean predicate 更合适。
+
+---
+
+## 10. Assertion Function 改变后续控制流
+
+断言函数失败时必须中断，因此成功返回后 checker 可以增加事实：
+
+```typescript
+function assertString(value: unknown): asserts value is string {
+    if (typeof value !== "string") {
+        throw new TypeError("expected string");
+    }
+}
+
+function normalize(value: unknown): string {
+    assertString(value);
+    return value.trim(); // value 已收窄为 string
+}
+```
+
+只证明条件成立也可以：
+
+```typescript
+function assert(condition: unknown, message: string): asserts condition {
+    if (!condition) throw new Error(message);
+}
+```
+
+Assertion function 适合“失败即终止”的内部边界；HTTP 参数解析通常需要结构化错误结果，不能只抛第一条字符串异常。
+
+---
+
+## 11. 属性收窄可能被别名和写入破坏
+
+```typescript
+type Config = { token?: string };
+
+function use(config: Config, mutate: (value: Config) => void): void {
+    if (config.token !== undefined) {
+        const token = config.token; // 捕获 primitive 快照
+        mutate(config);             // 可能删除或修改 config.token
+        token.toUpperCase();        // 安全：本地 const 不受对象写入影响
+    }
+}
+```
+
+TypeScript 不做完整的跨函数副作用分析。它可能在某些调用后仍保留属性收窄，但这不等于调用函数不会突变对象。涉及插件、回调和共享对象时，应复制需要的值、传 readonly 视图或建立不可变协议。
+
+这也是“类型检查通过但运行时仍可能失败”的一个健全性边界。
+
+---
+
+## 12. `in` 检查的是属性存在，不是值一定可用
+
+```typescript
+type Fish = { swim: () => void };
+type Human = { swim?: () => void; walk: () => void };
+
+function move(value: Fish | Human): void {
+    if ("swim" in value) {
+        // Human 仍可能在这个分支，因为它允许拥有 swim 属性。
+        value.swim?.();
+    }
+}
+```
+
+原型链上的属性也会让 `in` 为 true。解析 JSON DTO 时若协议要求自有属性，可使用 `Object.hasOwn(value, "key")`，并继续检查字段值类型。
+
+在 `exactOptionalPropertyTypes` 下，“属性缺失”和“属性存在且 undefined”更明确，但运行时判断仍要匹配你的序列化协议。
+
+---
+
+## 13. `instanceof` 检查运行时构造器身份
+
+```typescript
+if (error instanceof CustomError) {
+    // 检查原型链，而不是接口结构
+}
+```
+
+它不能用于 interface/type，因为它们已擦除；跨 iframe/VM、Worker 序列化、不同包副本时，自定义构造器身份也可能不同。进程内受控对象适合 `instanceof`，跨网络协议应使用经过验证的判别字段。
+
+---
+
+## 14. 解构与判别字段的相关性
+
+现代 TypeScript 能在受支持的 const 解构中保留判别关系：
+
+```typescript
+type Action =
+    | { kind: "text"; payload: string }
+    | { kind: "count"; payload: number };
+
+function handle(action: Action): void {
+    const { kind, payload } = action;
+    if (kind === "text") payload.toUpperCase();
+}
+```
+
+但把相关字段分别存入可变变量、跨函数返回不相关元组、或将回调参数写成两个独立联合，仍可能丢失关联。最稳定的设计是尽可能让判别字段和载荷共同留在一个可辨识联合值中。
+
+---
+
+## 15. 收窄调试顺序
+
+1. 声明类型和当前流类型分别是什么？
+2. 判断是否真的排除了目标成员，还是只做 truthiness？
+3. 属性是必填、可选，还是值含 undefined？
+4. 是否发生重新赋值、别名写入或闭包延迟执行？
+5. 谓词是否正确声明为 `value is T`，实现是否真的证明 T？
+6. 相关字段是否被拆成互不相关的联合？
+7. 跨运行时边界是否错误使用了 instanceof？
+8. 应该继续用 guard，还是建立 parse/Result 边界？
 
 ---
 

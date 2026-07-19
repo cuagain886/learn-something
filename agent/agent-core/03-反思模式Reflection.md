@@ -34,7 +34,7 @@ return draft
 
 ### 单模型 vs 双角色
 - **同一个模型自评**：让模型切换到"批判者"角色审自己的初稿。简单常用。
-- **生成者 + 评估者分离（Evaluator-Optimizer）**⭐：一个 LLM 调用负责生成，另一个负责评估和给反馈，循环往复。**当评判标准明确时特别有效**（这是 Anthropic 五种工作流模式之一）。分离角色能减少"自己看不出自己错"的盲区。
+- **生成者 + 评估者分离（Evaluator-Optimizer）**⭐：一个调用负责生成，另一个负责按 rubric 给反馈。角色分离能改善提示聚焦，但如果仍使用同一模型、同一证据和相似 prompt，错误仍高度相关；“两个 Agent”不等于两个独立专家。
 
 ---
 
@@ -51,12 +51,12 @@ return draft
    → 带着教训重新尝试 → 再评估 → ...
 ```
 
-**它和普通反思的区别**：Reflexion 强调"**在一次会话内从失败中积累经验**"，反思的产物（教训）会指导后续尝试，而不只是改一版当前输出。这能系统性缓解 [文档 01](01-Agent循环与ReAct.md) 的多种失败（上下文漂移、错误累积、低效工具使用）。
+**它和普通反思的区别**：Reflexion 强调在后续 trial 中复用语言反馈，论文把反思写入 episodic memory；模型权重没有更新。记忆可以只活在当前任务，也可以由应用持久化，但跨任务写入前必须处理适用范围、冲突、隐私与错误固化。
 
 ### 实证效果（为什么值得学）
-反思类循环在有客观反馈信号的任务上效果显著。一个经典案例：**AlphaCodium** 用"反思重的循环"（起草 → 跑测试 → 反思失败 → 重写）把 GPT-4 在 CodeContests 上的成绩**从 19% 提升到 44%**。
+反思类循环在有客观反馈信号的任务上可能显著有效。AlphaCodium 在 CodeContests 验证集上报告 GPT-4 的 `pass@5` 从直接提示的 19% 提升到完整 flow 的 44%。这个结果来自包括问题分析、测试推理、生成、运行和迭代修复的整套代码流程，不能简化成“加一句反思 prompt 就提升 25 个点”。
 
-> 关键前提：**有"客观的反馈信号"时，反思最有效**——比如代码能跑单元测试、数学有标准答案、检索能验证事实。反馈越客观，反思越有力。
+> 关键前提：反思需要**与生成错误弱相关、能区分候选优劣的反馈信号**——例如隐藏单元测试、执行器、世界状态或独立证据。只让同一模型无新证据地“再想一遍”，错误往往相关，容易产生更流畅但仍错误的修订。
 
 ---
 
@@ -73,6 +73,27 @@ return draft
 
 > **反思的天花板由"评估的质量"决定**。如果评估器判断不准，反思可能越改越糟，或在"自我感觉良好"里打转。**有客观信号（测试、校验、检索验证）时优先把它接进评估**，比让模型空想"我觉得这答案不错"可靠得多。
 
+### 4.1 为什么纯内在自我纠错可能退化
+
+假设生成器没有发现自己的关键错误，而 critic 看到的是同一题目、同一错误答案、同一知识边界。critic 很可能：
+
+- 为错误答案补一段更流畅的理由。
+- 把正确答案改坏，以满足表面 rubric。
+- 只修正文风/格式，没有改变世界状态。
+- 在 A/B 两版之间震荡。
+
+研究也观察到：没有外部反馈时，LLM 在推理任务上的自我纠错可能不改善甚至退化。因此“模型再看一遍”不是 verifier；真正的增益通常来自**新增信息或更强约束**：测试失败、编译器、数据库后置条件、独立检索证据、不同模型或人类反馈。
+
+### 4.2 生成和验证的不对称何时成立
+
+有些任务“找答案难、验答案容易”：
+
+- 代码实现难，但运行隐藏测试相对直接。
+- 数独求解难，但检查行列约束容易。
+- SQL 生成难，但 dry-run、schema 和结果不变量可检查。
+
+这时 verifier-guided refinement 有价值。开放式战略、审美写作或未知事实则未必存在廉价可靠 verifier；反思收益更不稳定。
+
 ---
 
 ## 5. 工程要点
@@ -83,11 +104,68 @@ return draft
 - **防震荡**：避免在两个版本间来回改。可保留"当前最佳"，只在确有改进时替换。
 - **成本意识**：反思至少让调用次数翻倍。用 [INDEX 阶段 6](../INDEX.md) 的评估确认它真的提升了质量再保留。
 
+### 5.1 用 best-so-far 防止“越改越差”
+
+不要无条件用新版覆盖旧版。一个更安全的循环是：
+
+```python
+best = initial_candidate
+best_score = independent_verifier(best)
+
+for _ in range(MAX_REVISIONS):
+    feedback = collect_feedback(best)  # 测试、规则、检索、必要时 LLM critic
+    candidate = revise(best, feedback)
+    hard = run_hard_constraints(candidate)
+    score = independent_verifier(candidate)
+
+    if hard.failed:
+        continue
+    if score > best_score + MIN_MEANINGFUL_GAIN:
+        best, best_score = candidate, score
+    else:
+        break
+return best
+```
+
+重要细节：
+
+- `collect_feedback` 与最终接受门禁最好不是完全相同的 judge/prompt。
+- `MIN_MEANINGFUL_GAIN` 防止评分噪声导致无意义改写。
+- 硬约束先于软评分；不能用更好的文风分数抵消单测失败。
+- 保留每版 artifact、feedback、verifier 版本与差异，才能回滚和分析。
+
+### 5.2 Reflection、Retry 与 Search 的区别
+
+| 机制 | 改变了什么 | 何时有用 |
+|------|------------|----------|
+| Retry | 重新采样同一策略 | 瞬时随机失败、候选有自然方差 |
+| Reflection | 根据反馈修改上下文/策略输入 | 反馈能指出失败原因 |
+| Search | 同时保留并比较多个候选分支 | 早期选择重要且 verifier 能区分 |
+| Learning | 更新参数或持久记忆 | 跨任务复用，并有数据治理 |
+
+只是把 temperature 调高再请求一次属于 retry，不是反思；生成十版再选最好属于 search。完整搜索方法见 [搜索、规划与测试时计算](08-搜索规划与测试时计算.md)。
+
+### 5.3 反思记忆的写入门
+
+失败后生成的“教训”本身可能错。持久化前至少记录：
+
+```yaml
+lesson:
+  scope: "tool:create_refund schema v3"
+  evidence: "eval/run-881/test-14"
+  proposed_rule: "超时后先按 operation_id 查询，不直接重试"
+  confidence: verified
+  valid_from: "2026-07-19"
+  expires_on_schema_change: true
+```
+
+只把通过外部证据验证、适用范围明确的教训提升为长期程序性记忆；未验证反思应留在当前 trial，避免一次偶然失败污染所有后续任务。
+
 ---
 
 ## 6. 与其他模式的关系
 
-- **反思 ⊥ ReAct**：可以在 ReAct 循环里周期性插入反思（"我目前收集的信息够回答吗？"），也可以在最终输出前加一轮反思。
+- **反思 + ReAct**：可以在失败、关键 checkpoint 或最终输出前触发；不要每一步固定反思，否则成本高且共享偏差会累积。
 - **反思 vs 规划**：规划是"做之前先想清楚步骤"，反思是"做之后检查并改"。两者互补——复杂任务常"先规划、执行、再反思"。见 [文档 04](04-规划模式Planning.md) 和 [文档 06](06-模式选择与组合.md)。
 - **反思在多智能体里**：可以把"评估者"做成一个独立的 critic Agent。见 [文档 05](05-多智能体协作模式.md)。
 
@@ -101,6 +179,8 @@ return draft
 - **反思导致震荡** → A 版改成 B、B 又改回 A。要保留最佳版、确有改进才替换。
 - **对简单任务也反思** → 纯浪费成本和延迟。
 - **不评估反思的收益** → 以为加了就好，实际可能没提升还更贵。
+- **反馈与发布共用同一公开测试** → 迭代过程会过拟合测试；搜索用测试和 release holdout 要分离。
+- **把 Reflexion 叫作模型在线训练** → 它通常改变上下文/记忆，不更新权重。
 
 ---
 
@@ -108,9 +188,9 @@ return draft
 
 - 反思 = "**生成 → 自我评估 → 修订**"，针对**正确性不足**的失败模式。
 - **Evaluator-Optimizer**（生成者+评估者分离）在评判标准明确时特别有效。
-- **Reflexion** 把反思嵌入行动循环，**在一次会话内从失败中积累教训**再重试；AlphaCodium 用反思循环把 GPT-4 从 19%→44%。
-- **反思的有效性取决于评估质量**：有客观反馈信号（测试/校验/检索验证）时最强，纯主观自评易失效。
-- 反思**不免费**（调用翻倍）：只在"标准明确 + 任务难 + 正确性优先"时用，限轮数、防震荡、用评估验证收益。
+- **Reflexion** 用语言反馈和 episodic memory 影响后续 trial，不更新模型权重；AlphaCodium 的 19%→44% 是特定验证集、`pass@5` 与完整代码 flow 的结果。
+- **反思的有效性取决于评估质量和误差相关性**：可执行/外部反馈通常比无新信息的同模型自评更可证伪，纯主观自评易失效。
+- 反思**不免费**：每轮至少增加评估/修订中的一个或多个调用，并扩大 token、延迟与搜索偏差；只在边际收益经同预算评测成立时使用，限轮数、防震荡、保留 best-so-far。
 
 ## 9. 检验清单
 
@@ -119,9 +199,13 @@ return draft
 - [ ] 能说清 Reflexion 与普通反思的不同（会话内从失败学习）。
 - [ ] 能判断一个任务是否适合反思（看有没有客观评判标准）。
 - [ ] 知道反思的成本和如何防止无限打磨/震荡。
+- [ ] 能解释为什么相同模型的 generator/critic 仍然相关，以及纯内在自纠错为何可能退化。
+- [ ] 能设计 hard constraints + independent verifier + best-so-far 的接受门禁。
+- [ ] 能区分 retry、reflection、search 和参数/记忆 learning。
+- [ ] 能说明反思教训进入长期记忆前需要哪些证据与作用域。
 
 ---
 
 > 下一步：[04-规划模式Planning](04-规划模式Planning.md) —— 让 Agent 先谋而后动。
 >
-> 参考：[Agentic AI from First Principles: Reflection (TDS)](https://towardsdatascience.com/agentic-ai-from-first-principles-reflection/) · [7 Must-Know Agentic AI Design Patterns](https://machinelearningmastery.com/7-must-know-agentic-ai-design-patterns/)
+> 一手资料：[Reflexion](https://arxiv.org/abs/2303.11366) · [Self-Refine](https://arxiv.org/abs/2303.17651) · [Large Language Models Cannot Self-Correct Reasoning Yet](https://arxiv.org/abs/2310.01798) · [AlphaCodium](https://arxiv.org/abs/2401.08500) · [Anthropic — Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)

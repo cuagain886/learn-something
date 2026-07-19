@@ -12,6 +12,8 @@
  * 运行：  npx tsx src/02-variables-inference.ts
  */
 
+import assert from 'node:assert/strict';
+
 // ------------------------------------------------------------
 // 1. let / const / var
 // ------------------------------------------------------------
@@ -63,6 +65,13 @@ numbers.forEach((n) => {
 const point1 = { x: 1, y: 2 }; // 类型：{ x: number; y: number }（属性可改）
 const point2 = { x: 1, y: 2 } as const; // 类型：{ readonly x: 1; readonly y: 2 }
 // point2.x = 5; // ❌ as const 后属性变为只读
+assert.equal(Object.isFrozen(point2), false, 'as const 不会调用 Object.freeze');
+
+const shared = { retries: 3 };
+const wrapper = { shared } as const;
+// wrapper.shared 这个引用只读，但先创建的 shared 对象本身仍然可变。
+wrapper.shared.retries = 4;
+assert.equal(shared.retries, 4);
 
 // 对数组用 as const，会得到只读元组，常用于定义常量列表。
 const ROLES = ['admin', 'user', 'guest'] as const;
@@ -70,6 +79,18 @@ const ROLES = ['admin', 'user', 'guest'] as const;
 // 由此可以提取出联合类型（第 09 课会用到这个技巧）：
 type Role = (typeof ROLES)[number]; // 'admin' | 'user' | 'guest'
 const myRole: Role = 'admin';
+
+// satisfies 校验契约但保留表达式自己的精确键和值类型。
+type AgentConfig = {
+  mode: 'fast' | 'accurate';
+  maxSteps: number;
+};
+
+const agentConfig = {
+  mode: 'accurate',
+  maxSteps: 8,
+} satisfies AgentConfig;
+type InferredMode = typeof agentConfig.mode; // 'accurate'，不是整个联合
 
 // ------------------------------------------------------------
 // 4. 类型断言（Type Assertion）
@@ -100,12 +121,28 @@ function getLength(text?: string) {
   return text!.length;
 }
 
+// 生产代码优先通过分支建立证据，而不是把证明义务交给 `!`。
+function getLengthSafe(text?: string): number {
+  return text?.length ?? 0;
+}
+
+// 上下文类型从目标函数类型流入回调参数；函数参数并非“永远不能推断”。
+type Formatter = (input: { readonly id: string; readonly score: number }) => string;
+const format: Formatter = (input) => `${input.id}:${input.score.toFixed(1)}`;
+
+// 注解、satisfies、断言的差异由负向契约锁定。
+// @ts-expect-error 注解会在定义处拒绝不合法的 mode
+const brokenConfig: AgentConfig = { mode: 'turbo', maxSteps: 8 };
+void brokenConfig;
+
 console.log('=== 第 02 课：变量与类型推断 ===');
 console.log({ PI, counter, message, litStr, varStr });
 console.log('add(2,3) =', add(2, 3));
-console.log({ point2, myRole });
+console.log({ point2, wrapper, myRole, agentConfig });
 console.log({ strLength1, strLength2 });
 console.log('getLength("abc") =', getLength('abc'));
+console.log('getLengthSafe(undefined) =', getLengthSafe(undefined));
+console.log('contextual formatter =', format({ id: 'run_1', score: 9.25 }));
 
 // 让本文件成为独立模块：每个 .ts 文件都有独立作用域，避免与其它课程文件的同名声明在全局冲突。
 export {};

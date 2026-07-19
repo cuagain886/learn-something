@@ -13,6 +13,8 @@
  * 运行：  npx tsx src/03-functions.ts
  */
 
+import assert from 'node:assert/strict';
+
 // ------------------------------------------------------------
 // 1. 基本函数：给参数和返回值标注类型
 // ------------------------------------------------------------
@@ -82,6 +84,14 @@ function parseInput(input: string | number): string[] | number[] {
 const chars = parseInput('abc'); // 类型被精确推断为 string[]
 const nums = parseInput(42); // 类型被精确推断为 number[]
 
+// 重载不是实现内部的自动证明：实现仍需对联合做运行时收窄。
+// 而且持有联合参数的调用方不能自动匹配某一个重载：
+declare const maybeInput: string | number;
+if (false) {
+  // @ts-expect-error 重载解析要求某个公开签名整体匹配，联合参数不等于任选一个重载
+  parseInput(maybeInput);
+}
+
 // ------------------------------------------------------------
 // 5. this 类型
 // ------------------------------------------------------------
@@ -102,6 +112,42 @@ const counter: Counter = {
 counter.increment();
 counter.increment();
 
+// 把方法拆出来会丢失动态 this。bind 生成绑定函数；箭头函数则捕获词法 this。
+const boundIncrement = counter.increment.bind(counter);
+boundIncrement();
+
+// ------------------------------------------------------------
+// 6. 函数兼容、void 与回调
+// ------------------------------------------------------------
+
+type Point2DHandler = (point: { x: number; y: number }) => void;
+
+// 实现只依赖更少信息是安全的：调用方传来的 x/y 一定包含 x。
+const logX: Point2DHandler = (point: { x: number }) => {
+  console.log('x =', point.x);
+};
+
+if (false) {
+  // 实现要求 z 不安全，因为 Point2DHandler 的调用方没有承诺 z。
+  // @ts-expect-error strictFunctionTypes 拒绝过窄的函数参数
+  const requires3D: Point2DHandler = (point: { x: number; y: number; z: number }) => {
+    console.log(point.z);
+  };
+  void requires3D;
+}
+
+// `() => void` 允许实现返回值，因为调用方承诺忽略它。
+const collect: (value: number) => void = (value) => [value];
+const staticallyVoid = collect(7);
+assert.deepEqual(staticallyVoid, [7]);
+
+// async 函数总是返回 Promise；同步 throw 会变成 rejection。
+async function loadScore(id: string): Promise<number> {
+  if (id.length === 0) throw new TypeError('id must not be empty');
+  return 99;
+}
+assert.equal(await loadScore('user_1'), 99);
+
 console.log('=== 第 03 课：函数 ===');
 console.log('multiply(3,4) =', multiply(3, 4));
 console.log('square(5) =', square(5));
@@ -113,6 +159,7 @@ console.log('addOp/subOp =', addOp(8, 3), subOp(8, 3));
 console.log('add10(5) =', add10(5));
 console.log('parseInput =', chars, nums);
 console.log('counter.count =', counter.count);
+logX({ x: 1, y: 2 });
 
 // 让本文件成为独立模块：每个 .ts 文件都有独立作用域，避免与其它课程文件的同名声明在全局冲突。
 export {};

@@ -234,7 +234,114 @@ declare global {
 
 ---
 
+## 13. ESM 不只是“每个文件一个对象”：链接、求值与 live binding
+
+把 ESM 简化成 CommonJS 的 `require()` 返回对象，会漏掉三个关键阶段：
+
+1. **解析与链接**：宿主把 specifier 规范化成 URL，建立完整依赖图，并连接 import/export binding；
+2. **实例化**：为模块环境创建 binding，但此时模块体不一定已经执行；
+3. **求值**：按依赖顺序执行模块体，遇到 top-level await 时整条相关依赖链可能异步暂停。
+
+```typescript
+// state.ts
+export let count = 0;
+export function increment() {
+    count += 1;
+}
+
+// consumer.ts
+import { count, increment } from "./state.js";
+
+increment();
+console.log(count); // 1，不是 import 时复制得到的 0
+```
+
+imported binding 是只读的“远程引用”：消费方不能给 `count` 重新赋值，但导出模块改变它后，所有消费方都会读到新值。`export { count } from ...` 继续转发同一个 binding，也不是生成值快照。
+
+### 模块命名空间对象不是普通字典
+
+```typescript
+const namespace = await import("./state.js");
+
+Object.getPrototypeOf(namespace);       // null
+Reflect.set(namespace, "count", 99);   // false
+```
+
+它是 Module Namespace Exotic Object：键集合来自导出表，属性读取连接 live binding，不能像普通对象一样任意增删改。不要把 namespace import 当作可变配置容器。
+
+### 缓存键是规范化 URL
+
+同一个 Realm 中，同一个规范化 URL 的 ESM 通常只实例化和求值一次，因此模块级 singleton 会被所有 import 共享。Node ESM 按 URL 缓存；查询串或 fragment 不同可能形成不同模块实例：
+
+```javascript
+await import("./plugin.js?tenant=a");
+await import("./plugin.js?tenant=b"); // 不同 URL，可能再次求值
+```
+
+这对 Agent 服务很重要：把当前 run、tenant、授权或可变测试状态放进模块顶层，会把本应请求隔离的数据升级为进程级共享状态。模块缓存适合不可变配置和显式 singleton，不适合隐式请求上下文。
+
+### 循环依赖为何有时成功、有时 TDZ 失败
+
+ESM 先链接整个图，所以循环依赖不必然报错；但 binding 创建不等于值已初始化。函数声明通常可在求值前建立可用绑定，而 `let`/`const`/`class` 在初始化前仍处于 TDZ。循环中的顶层读取很容易得到 `ReferenceError`，并且加入 top-level await 后求值顺序更难推断。
+
+解决循环依赖的首选不是“调整 import 顺序”，而是：
+
+- 把双方共同依赖的协议下沉到第三个无副作用模块；
+- 通过参数注入运行时依赖；
+- 避免模块顶层执行依赖另一侧已初始化值的副作用；
+- 用依赖图工具或 `--traceResolution` 区分“解析环”与“求值环”。
+
+---
+
+## 14. `tsc` 不是通用发布资产流水线
+
+开启 `declaration` 后，`tsc` 会从 `.ts` 实现生成 `.d.ts`，但这不代表它会复制所有与课程或包有关的文件：
+
+- 未开启 `allowJs` 时，手写 `.js` 通常不进入 emit；
+- 作为输入参与检查的手写 `.d.ts` 不会自动镜像到 `outDir`；
+- schema、prompt、WASM、模板、证书和 package metadata 更不会凭空进入产物；
+- 本地源码运行器能沿源码路径找到资产，不证明安装后的包也包含它。
+
+真实构建应把静态资产当成显式清单：
+
+```text
+tsc emit
+  + copy handwritten JS/.d.ts/schema assets
+  + generate package.json exports
+  + npm pack --dry-run
+  + install tarball in a consumer fixture
+```
+
+第 14 课的构建脚本故意显式复制手写 JS 与声明文件，用来证明“源码能运行”和“dist 自包含”是两道不同门禁。`allowJs` 也不是自动答案：它会改变程序包含范围、JS 检查方式和声明生成结果，仍需检查最终归档。
+
+---
+
+## 15. 可运行证明
+
+- [第 11 课：模块图、live binding 与命名空间对象](../code/src/11-modules/11-modules.ts)
+- [live binding 模块](../code/src/11-modules/runtime-state.ts)
+- [第 14 课：声明文件信任边界](../code/src/14-declaration-files.ts)
+- [显式资产复制脚本](../code/scripts/copy-course-assets.mjs)
+
+建议分别执行：
+
+```bash
+npm run lesson:modules
+npm run lesson:modules:dist
+npm run lesson:declarations
+npm run lesson:declarations:dist
+```
+
+只有四条都通过，才能证明 checker、源码宿主、emit specifier 与 dist 资产至少在这组实验中对齐。
+
+官方延伸阅读：
+
+- [TypeScript Modules Reference](https://www.typescriptlang.org/docs/handbook/modules/reference)
+- [TypeScript Declaration Files](https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html)
+- [Node.js ECMAScript Modules](https://nodejs.org/api/esm.html)
+
+---
+
 ## 一句话总结
 
 TypeScript 模块配置的目标不是“让红线消失”，而是准确模拟宿主。类型入口、运行时入口、文件格式和 `exports` 条件必须成对一致，且要从实际消费者项目验证。
-

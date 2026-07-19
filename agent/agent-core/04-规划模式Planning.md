@@ -6,7 +6,7 @@
 
 ## 1. 规划解决什么问题
 
-[文档 01](01-Agent循环与ReAct.md) 提到 ReAct 的一个严重失败：随着上下文变长，模型会**"放弃原计划、半途跑偏"（研究显示强模型也有 >50% 概率发生）**，因为它每一步都在"临场决定下一步"，没有一个稳定的全局计划。
+[文档 01](01-Agent循环与ReAct.md) 提到 ReAct 的一个严重失败：随着轨迹增长，模型可能**放弃原计划、半途跑偏**，因为它每一步都在局部决定下一步，而目标、计划和证据没有被运行时维护成稳定的外部状态。偏离率必须在具体任务集上重复测量，不能套用统一比例。
 
 **规划模式（Planning）的核心**：
 
@@ -20,18 +20,18 @@
 
 | | ReAct | Planning |
 |---|---|---|
-| 决策方式 | 每步**临场**决定下一步 | **先**定好整个计划，再执行 |
+| 决策方式 | 观察后在线选择一个下一动作 | 显式表示未来任务/状态，按计划选择或搜索 |
 | 优点 | 灵活、能随中间结果调整 | 步骤清晰、不易跑偏、可预估 |
 | 缺点 | 步骤多时易放弃计划、跑偏 | 计划可能"脆"（见第 4 节） |
 | 适合 | 步数少、探索性强 | 步骤多、结构清晰、需全局视角 |
 
-> 直觉：ReAct 像"走一步看一步"，规划像"先列任务清单再逐项打勾"。任务越复杂、步骤越多，越需要一个显式计划来防跑偏。
+> 更精确地说：ReAct 常近似单轨迹在线决策；规划把未来依赖、前置条件和可能分支外置。计划可以指导 ReAct，但不能取代对新观察的状态更新。
 
 ---
 
 ## 3. Plan-and-Execute（规划-执行）⭐
 
-最主流的规划范式，分两个角色：
+常见的规划范式分两个角色：
 
 ```
 ① 规划器(Planner)：看着目标，产出一个分步计划
@@ -41,12 +41,12 @@
 ```
 
 - **优点**：把"想清楚做什么"和"具体怎么做"分开。计划提供全局视角，执行专注当前步，**显著减少跑偏**。
-- 还能省成本：规划用强模型想一次，执行各步可用更便宜的模型。
+- 有机会省成本：规划器与执行器可以使用不同模型，但是否省取决于计划返工率、上下文重复和 verifier 成本，必须实测。
 
 ### ReWOO（Reasoning WithOut Observation）—— 省成本的极端版
 > **ReWOO 把所有推理和工具调用一次性规划好，再批量执行，最后汇总**，中间**不把每步观察喂回重新推理**。
 
-- **优点**：LLM 往返次数大幅减少 → **省 token、省成本、降延迟**。针对的是"调用太多太贵"这个失败模式。
+- **优点**：在论文实验的特定任务中减少重复 prompt/模型往返；适合工具依赖能提前表达、观察不常改变后续决策的任务。
 - **缺点**：计划在"没看到任何中间结果"时就定死了——**如果某步结果出乎意料，后面的步骤已经写好且是错的**。灵活性差。
 
 ---
@@ -60,18 +60,23 @@
 纯 Plan-and-Execute / ReWOO 都有这个问题：现实世界充满意外（搜索没结果、数据格式变了、前一步失败），死守一个事先定好的计划必然碰壁。
 
 ### 解药：Re-plan Gate（重规划闸门）⭐
-> **每执行 K 步、或当某步输出超出预期/置信度阈值时，回头问规划器：要不要修订剩余的计划？**
+> 固定每 K 步检查可以作为兜底，但真正的 replan 应由**计划假设失效**触发：前置条件变化、资源版本冲突、观察进入未覆盖分支、成本超预算、关键证据被推翻或权限/目标改变。
 
 ```
 plan = 规划器(目标)
 while plan 未完成:
     step = plan.next()
     result = 执行(step)
-    if result 出乎意料 or 已执行K步:
-        plan = 规划器.重新规划(目标, 已完成步骤, result)   # ← re-plan gate
+    update_world_and_belief_state(result)
+    if precondition_invalidated or branch_uncovered or budget_forecast_exceeded:
+        plan = 规划器.重新规划(
+            原始目标, 不可变约束, 已提交副作用,
+            当前世界快照, 已验证产物, 剩余预算, replan原因
+        )
+        validate_plan(plan)
 ```
 
-这样既有"计划"的稳定性，又有"根据现实调整"的灵活性，是**两者的最佳折中**。BabyAGI、LangChain 的 Plan-and-Execute Agent 都实现了这种机制。
+注意：重规划只能改未来，不能假装已经发生的退款、邮件或数据库写入不存在。新的计划还要防止重复副作用、依赖环和权限不可达。
 
 ---
 
@@ -83,6 +88,46 @@ while plan 未完成:
 - **粒度适中**：太粗（"做完这个项目"）没法执行；太细（"打开文件"）计划冗长。每个子任务应是"一个可执行、可验证的动作"。
 - **可验证**：每个子任务最好有明确的"完成标志"，便于执行器判断和（配合反思）检查。
 - **留出错处理**：计划里考虑"某步失败怎么办"（重试？跳过？换路？）。
+
+### 5.1 计划不是自然语言列表，而是可执行契约
+
+一个计划项至少需要：
+
+```yaml
+id: verify_payment
+goal: "确认支付是否可退款"
+owner: payment_worker
+depends_on: [load_order]
+preconditions:
+  - "order.version == 42"
+inputs:
+  order_id: O-123
+allowed_tools: [payments.get, payments.reconcile]
+success_predicate: "payment.refundable_amount >= requested_amount"
+expected_effect: READ
+budget: {tool_calls: 3, deadline_ms: 5000}
+on_failure:
+  TRANSIENT: retry_backoff
+  OUTCOME_UNKNOWN: reconcile
+  PERMISSION_DENIED: escalate
+```
+
+自然语言 `“检查支付”` 不能让调度器判断完成、恢复或冲突；结构化计划项才能绑定 owner、预算和 verifier。
+
+### 5.2 四种计划表示
+
+| 表示 | 能表达 | 适合 | 局限 |
+|------|--------|------|------|
+| 线性列表 | 顺序 | 简单任务 | 无并行/条件 |
+| DAG | 依赖、并行、join | 调研、构建、ETL | 条件分支仍要扩展 |
+| HTN | 高层任务按领域方法展开 | 规则稳定的业务 | 维护 method 库成本 |
+| Contingent plan | 针对观察的条件分支 | 外部状态多变 | 分支数可能爆炸 |
+
+计划“是否好”不能只让 LLM 打分，还要做确定性验证：ID 唯一、依赖无环、输入可得、工具存在、权限可达、预算可行、写动作有幂等/补偿。
+
+### 5.3 规划与搜索的关系
+
+Plan-and-Execute 通常只生成一个计划；Tree of Thoughts、beam search、MCTS/LATS 会生成并比较多条候选轨迹。前者便宜，后者能回溯早期错误但依赖更强 verifier，复杂度可达 \(O(B^D)\)。详见 [搜索、规划与测试时计算](08-搜索规划与测试时计算.md)。
 
 > 这与 [rag/05](../rag/05-查询理解-改写路由与转换.md) 的"查询分解"是同一思想在不同层面的应用——把复杂问题拆成可处理的小块。
 
@@ -108,6 +153,7 @@ while plan 未完成:
 | 步骤少、探索性强、强依赖中间结果 | ❌ 直接 ReAct 更好 |
 | 步骤无法预先确定、需动态拆分 | ✅ Orchestrator-Workers |
 | 现实多变、计划常被打乱 | ⚠️ 必须加 re-plan gate |
+| 早期选择影响巨大、需要回溯且有强 verifier | ⚠️ 考虑 beam/ToT/MCTS，而非只生成一个计划 |
 
 > 决策提醒（呼应 [文档 00](00-Agent核心学习总览.md) 的纪律）：**先用 ReAct，当你观察到"任务太复杂、Agent 老跑偏"时，再升级到带 re-plan 的 Plan-and-Execute。** 别一上来就规划。
 
@@ -121,6 +167,9 @@ while plan 未完成:
 - **对简单任务也强行规划** → 增加开销，不如直接 ReAct。
 - **规划器幻觉出不存在的步骤/工具** → 计划本身就错；规划时也要约束在可用工具范围内。
 - **没有失败处理** → 计划里某步挂了，整个任务卡死。
+- **计划只有描述、没有 success predicate** → 执行器只能问模型“做完了吗”，无法可靠恢复。
+- **重规划覆盖已提交动作** → 重复发邮件/退款；已提交副作用必须是不可变输入。
+- **把 LLM 自评分当计划证明** → 还需 DAG、权限、预算和工具可达性验证。
 
 ---
 
@@ -131,6 +180,8 @@ while plan 未完成:
 - **ReWOO**：一次性规划+批量执行，省成本，但牺牲灵活性。
 - **核心陷阱是"脆弱计划"**：计划在没看到结果时就定死，意外一来就错——**解药是 re-plan gate**（每 K 步或遇意外就重规划），兼得稳定与灵活。
 - **任务分解**要识别依赖、粒度适中、可验证、含出错处理。
+- 计划应是包含前置条件、effect、success predicate、owner 和预算的结构化契约，而不是待办清单。
+- 更复杂的规划本质是有限预算下的轨迹搜索；没有可靠 verifier 时，搜索会放大噪声。
 - **Orchestrator-Workers** 是动态规划变体，跨入多智能体。
 - 纪律不变：**先 ReAct，观察到跑偏再升级到带 re-plan 的规划**。
 
@@ -141,9 +192,12 @@ while plan 未完成:
 - [ ] 知道 ReWOO 用什么换什么（省成本 vs 失去灵活性）。
 - [ ] 能把一个复杂任务做合理的子任务分解（含依赖识别）。
 - [ ] 知道什么时候该从 ReAct"毕业"到规划模式。
+- [ ] 能比较线性列表、DAG、HTN、contingent plan，并写出一个可执行计划项。
+- [ ] 能列出语义化 replan 信号，并说明已提交副作用为何不能被重写。
+- [ ] 能解释单计划与 ToT/MCTS 搜索的成本和 verifier 差异。
 
 ---
 
 > 下一步：[05-多智能体协作模式](05-多智能体协作模式.md) —— 一个 Agent 不够时怎么办。
 >
-> 参考：[ReAct vs Plan-and-Execute vs ReWOO vs Reflexion](https://theaiengineer.substack.com/p/the-4-single-agent-patterns) · [Three Agent Patterns 2026 (DEV)](https://dev.to/gabrielanhaia/react-plan-and-execute-or-reflection-the-three-agent-patterns-every-engineer-needs-in-2026-355p) · [Anthropic — Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
+> 一手资料：[ReWOO](https://arxiv.org/abs/2305.18323) · [Tree of Thoughts](https://arxiv.org/abs/2305.10601) · [Language Agent Tree Search](https://arxiv.org/abs/2310.04406) · [Anthropic — Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)

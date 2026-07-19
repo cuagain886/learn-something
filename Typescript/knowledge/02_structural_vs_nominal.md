@@ -91,12 +91,16 @@ const p3: Person = {
 ```typescript
 type Handler = (event: { x: number; y: number }) => void;
 
-// ✅ 参数类型更宽 → 兼容（这是协变/逆变，见下文）
-const handler1: Handler = (event: { x: number; y: number; z: number }) => {};
-const handler2: Handler = (event: { x: number }) => {};  // ❌ 严格模式不兼容！
+// ❌ 实现要求额外的 z，但调用 Handler 的代码只承诺传 x/y
+// const unsafe: Handler = (event: { x: number; y: number; z: number }) => {};
+
+// ✅ 实现只读取 x，因此任何满足 Handler 的 x/y 对象都能安全处理
+const safe: Handler = (event: { x: number }) => {
+    console.log(event.x);
+};
 ```
 
-函数参数兼容性是 TS 类型系统中最微妙的点之一，详见 [[04_generics_and_type_programming|泛型与类型编程]] 中的协变/逆变讨论。
+在 `strictFunctionTypes` 下，函数属性的参数按逆变方向检查；方法语法为了兼容常见 JS/DOM 模式仍保留双变例外。完整讨论见 [07 · 可赋值性、方差与健全性](07_assignability_variance_and_soundness.md)。
 
 ---
 
@@ -112,13 +116,29 @@ type ProductId = number & { readonly __brand: "ProductId" };
 function getUser(id: UserId) { /* ... */ }
 function getProduct(id: ProductId) { /* ... */ }
 
-const userId = 1 as UserId;
-const productId = 2 as ProductId;
+function userId(value: number): UserId {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+        throw new RangeError("invalid user id");
+    }
+    return value as UserId;
+}
 
-getUser(userId);       // ✅
-getUser(productId);    // ❌ 类型不兼容！
-// getProduct(userId); // ❌ 类型不兼容！
+function productId(value: number): ProductId {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+        throw new RangeError("invalid product id");
+    }
+    return value as ProductId;
+}
+
+const currentUserId = userId(1);
+const currentProductId = productId(2);
+
+getUser(currentUserId);          // ✅
+// getUser(currentProductId);    // ❌ 类型不兼容！
+// getProduct(currentUserId);    // ❌ 类型不兼容！
 ```
+
+品牌的断言只能集中在已经完成运行时校验的构造边界。如果调用方到处 `as UserId`，它只是把普通 number 伪装成已验证 ID。
 
 ```typescript
 // 方案 2：使用 unique symbol 做品牌（更严格）
@@ -133,19 +153,30 @@ type ProductId = number & { [productIdBrand]: true };
 
 ---
 
-## 4. Java 中的"结构化"例外
+## 4. Java Lambda 不是结构化子类型
 
-有趣的是，Java 在某些场景也表现出类似结构化类型的行为：
+Java Lambda 会根据**目标函数式接口**做 target typing，两个签名相同的函数式接口仍然是不同的名义类型：
+
+```java
+interface ParserA { String parse(String input); }
+interface ParserB { String parse(String input); }
+
+ParserA a = input -> input.trim();
+ParserB b = input -> input.trim();
+// b = a; // 编译错误：ParserA 不是 ParserB
+```
+
+Lambda 语法能分别转换到两个目标接口，不代表接口实例之间形成结构化子类型关系。
 
 | 场景 | Java 行为 | 结构化程度 |
 |------|---------|-----------|
 | 类继承/接口 | 名义类型（必须 extends/implements） | 纯名义 |
-| Lambda 表达式 | `(x) -> x.length()` 可赋给任何匹配签名的函数式接口 | ⭐ 结构化！ |
-| 方法引用 | `String::length` 同上 | ⭐ 结构化！ |
+| Lambda 表达式 | 根据目标名义函数式接口进行转换 | target typing，不是结构化子类型 |
+| 方法引用 | 根据目标函数式接口进行转换 | target typing，不是结构化子类型 |
 | 泛型通配符 | `List<? extends Number>` | 部分结构化 |
 | 数组协变 | `String[]` 是 `Object[]` 的子类型 | 运行时名义（有坑） |
 
-Java 的 Lambda / 方法引用本质上是结构化类型——编译器只看签名是否匹配，不要求显式 `implements`。这也是为什么它的泛型系统 + Lambda 组合如此强大。
+因此更准确的类比是：Java Lambda 与 TypeScript **上下文类型**都能从使用位置获得参数签名，但 Java 的接口赋值关系仍然是名义的。
 
 ---
 
@@ -186,12 +217,118 @@ class ProductId {
 declare const brand: unique symbol;
 type Branded<T, B> = T & { [brand]: B };
 
-// 方式 3：enum（数字枚举的特殊行为）
+// 方式 3：封装对象/类，在构造器里同时建立运行时不变量
 ```
+
+普通 enum 有运行时对象和特殊兼容规则，但不是通用品牌机制；跨 JSON 边界时字符串字面量联合通常更透明。
 
 ---
 
-## 7. 面试常见问题
+## 7. 新鲜对象字面量检查不是“精确对象类型”
+
+TypeScript 的对象类型通常是开放的最小契约：
+
+```typescript
+type Named = { name: string };
+
+const source = { name: "Ada", internal: true };
+const named: Named = source; // 合法
+```
+
+直接对象字面量触发的 excess property check 是一项启发式错误检查，不会把 `Named` 变成“只能有 name 的精确类型”。以下操作的含义各不相同：
+
+```typescript
+const annotated: Named = { name: "Ada" };
+// 变量的观察类型就是 Named
+
+const checked = { name: "Ada", internal: true } satisfies Named;
+// 检查满足 Named，同时保留 internal 的推断
+
+const asserted = { name: "Ada", typo: true } as Named;
+// 断言可能跳过你真正希望得到的拼写检查
+```
+
+若运行时协议必须拒绝额外字段，必须由 schema/parser 明确执行；TypeScript 的结构兼容不会在 JSON 上删除或拒绝字段。
+
+---
+
+## 8. 类只有实例侧参与普通结构比较
+
+```typescript
+class A {
+    static version = 1;
+    value = "a";
+}
+
+class B {
+    static version = 2;
+    value = "b";
+}
+
+let instance: A = new B(); // 实例结构兼容
+```
+
+`A` 作为类型名通常指实例侧；`typeof A` 才是包含构造签名和静态成员的值侧类型：
+
+```typescript
+type AConstructor = typeof A;
+```
+
+这解释了为什么 generic factory 约束要写 `new (...args) => T`，以及为什么静态成员不会自动参与实例兼容判断。
+
+### private/protected 引入名义成分
+
+如果目标实例类型含 TypeScript `private`/`protected` 成员，来源必须包含源自同一声明的成员。两个类即使写了同名 private，也不兼容。这个规则发生在 checker 中；TS `private` 通常会被擦除，不等于运行时 `#private` 品牌检查。
+
+---
+
+## 9. 泛型参数只有进入结构才影响兼容性
+
+```typescript
+interface Phantom<T> {}
+
+let numberTag!: Phantom<number>;
+let stringTag!: Phantom<string>;
+numberTag = stringTag; // 合法：T 没有改变任何成员结构
+```
+
+加入成员后才产生差异：
+
+```typescript
+interface Box<T> {
+    readonly value: T;
+}
+
+// Box<number> 与 Box<string> 的 value 不兼容
+```
+
+仅仅声明 `<T>` 不会自动创造名义身份。若类型参数用于品牌，必须让它出现在不可伪造的 `unique symbol` 属性等结构位置。
+
+---
+
+## 10. Agent 架构为什么受益于结构类型
+
+模型、存储和工具适配器可以只声明最小端口：
+
+```typescript
+interface ModelPort {
+    complete(request: ModelRequest, signal: AbortSignal): Promise<ModelTurn>;
+}
+```
+
+生产 SDK adapter、测试 fake、本地模型都无需继承共同基类，只要满足结构即可。这使六边形架构和依赖注入非常自然。
+
+风险是“碰巧同形”的对象可能被误接线。解决方式不是给所有东西加 class，而是：
+
+- 让领域端口包含有语义的判别字段或方法；
+- 对 ID、权限等同形 primitive 使用受控品牌；
+- 在 composition root 显式装配依赖；
+- 外部数据仍从 unknown 验证；
+- 对关键端口写 contract tests。
+
+---
+
+## 11. 常见问题
 
 **Q：TS 的类型兼容性是基于什么？和 Java 有什么不同？**
 

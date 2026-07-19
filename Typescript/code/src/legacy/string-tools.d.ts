@@ -1,11 +1,14 @@
-// string-tools.d.ts —— 为同目录下的 string-tools.js 提供「类型声明」。
-// ------------------------------------------------------------
-// 规则：当 TS 遇到 import './string-tools' 时，会优先用同名的 .d.ts 作为它的类型，
-//       而真正运行的是 string-tools.js。这就是「给无类型 JS 补类型」的标准做法
-//       （社区里大量的 @types/xxx 包就是这么工作的）。
-//
-// 这里只描述「形状」，没有任何实现（.d.ts 文件编译后会被完全擦除）。
+/**
+ * 手写的外部模块声明必须镜像 string-tools.js 的模块形状。
+ *
+ * 该文件只参与 checker，不会自动验证或包装 JS 实现，也不会由 tsc 自动复制到
+ * outDir；课程构建脚本会把它作为发布资产显式复制。
+ */
 
 export declare function shout(text: string): string;
 export declare function repeat(text: string, times: number): string;
-export declare const LIB_NAME: string;
+
+/** 故意错误的契约：运行时实际返回 string，第 14 课会观测这次漂移。 */
+export declare function misdeclaredVersionCode(): number;
+
+export declare const LIB_NAME: 'string-tools';

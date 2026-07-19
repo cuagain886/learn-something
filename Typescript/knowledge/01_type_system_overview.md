@@ -1,6 +1,6 @@
 # 01 · TypeScript 类型系统全景 ⭐⭐⭐
 
-> TypeScript = JavaScript + 类型系统。理解这个类型系统的设计哲学，比记住具体语法重要十倍。
+> TypeScript 是用于描述 JavaScript 程序的渐进式静态类型系统，并附带一组编译期语法。理解“静态证明到哪里结束、运行时事实从哪里开始”，比背语法重要得多。
 
 ---
 
@@ -10,11 +10,13 @@
 |------|-----------|------------|------|
 | 类型检查时机 | 运行时 | 编译时 | 编译时 |
 | 类型标注 | 无 | 可选（渐进式） | 强制 |
-| 类型擦除 | - | 运行时无类型信息 | 泛型擦除 |
+| 类型擦除 | - | `interface`、`type`、类型注解等被擦除；少数 TS 语法会生成 JS | 泛型通常擦除，但 class/annotation 等运行时结构仍在 |
 | 类型推导 | - | 有（比 Java 的 var 强大得多） | 有（var，局部变量） |
 | 运行时行为 | 动态 | = 编译后的 JS（和 JS 完全一样） | JVM 执行 |
 
-**核心认知**：TypeScript 的类型系统是"编译时"的，一旦编译成 JS，所有类型信息消失。这不影响运行时——这意味着"类型正确"不等于"逻辑正确"，但它能防止大量低级错误。
+**核心认知**：TypeScript 的**类型空间**主要存在于编译期；`type`、`interface`、泛型实参和多数类型注解不会成为运行时反射信息。但不能笼统说“所有 TypeScript 语法都消失”：普通 `enum`、参数属性、带运行时代码的 `namespace`、装饰器等可能需要编译器生成 JavaScript。类型擦除不等于源码逐字符删除。
+
+类型正确也不等于输入真实：`fetch()` 返回的 JSON、环境变量、数据库内容和 LLM 工具参数不会因为写了接口就自动通过验证。
 
 ---
 
@@ -36,11 +38,15 @@ const config = {     // TS 推断整个结构
 // config 的类型是 { host: string; port: number; retry: { count: number; delay: number; } }
 ```
 
-**什么时候必须写类型注解？**
-1. 函数参数（TS 不会推断参数类型）
-2. 没有初始值的变量（`let x;` → 变成 `any`）
-3. 你想让类型比推断结果更宽/更窄时
-4. 对外暴露的 API（函数返回值、导出的接口）—— 做文档用
+**什么时候应写类型注解？**
+
+1. 没有上下文签名的函数参数；回调参数则经常能从调用位置获得上下文类型。
+2. 需要固定公共 API、递归函数或模块导出边界时。
+3. 需要防止实现细节被推断成意外公共契约时。
+4. 初始化值不足以表达预期状态空间时，例如 `let state: "idle" | "running" = "idle"`。
+5. 需要在实现位置尽早验证契约，而不是让错误传播到使用位置时。
+
+`let value;` 的行为也不能简单概括为“永久 any”。在不同控制流赋值下，TypeScript 会演进它的当前类型；但未受约束的值很容易形成隐式 `any` 或过宽 API，因此公共代码不应依赖这种特殊推断。
 
 **一个好的经验法则**：让 TS 尽可能推断，只在边界（函数签名、模块导出）写显式类型。
 
@@ -75,7 +81,7 @@ draw(p3d);  // ✅ Point3D 满足 Point2D 的结构要求
 
 这叫"鸭子类型"：如果它走起来像鸭子、叫起来像鸭子，那它就是鸭子。TS 只看**形状**，不看**名字**。
 
-不同类型系统对比详见 [[02_structural_vs_nominal]]。
+不同类型系统对比详见 [02 · 结构化类型 vs 名义类型](02_structural_vs_nominal.md)。
 
 ---
 
@@ -118,27 +124,19 @@ function assertNever(x: never): never {
 }
 ```
 
-`never` 是**所有类型的子类型**（可以赋给任何类型），但**没有类型是 never 的子类型**（除了 never 本身）。
+在普通严格类型关系中，`never` 是底类型：它可以赋给其他类型，而一个真实可达的值不能被赋给 `never`。这也是为什么未处理的联合成员无法传给 `assertNever`。
 
-### 他们之间的关系
+### 它们不是一棵简单继承树
 
-```
-        unknown ←── 任何类型都可以赋值给 unknown
-           ↑
-         any    ←── 可以赋给任何 / 接受任何（类型检查的开关）
-           ↑
-        object
-        /  |  \
-    string number boolean ...
-        \  |  /
-         never  ←── 可以赋值给任何类型 / 没有任何值
-```
+把 `any` 画进普通类型层级会产生误解：`any` 会同时绕过许多输入和输出检查，更像关闭局部证明的逃生通道。`unknown` 可近似理解为安全顶类型，`never` 可近似理解为底类型。
 
 | 类型 | 赋值给其他类型 | 接受其他类型赋值 | 安全访问属性 |
 |------|:---:|:---:|:---:|
 | `any` | ✅ | ✅ | ✅（运行时可炸）|
 | `unknown` | ❌ | ✅ | ❌（必须先收窄）|
-| `never` | ✅ | ❌ | ❌（不存在值）|
+| `never` | ✅ | ❌ | ❌（可达代码中不存在这种值）|
+
+还要注意：联合与交叉在这个格上有代数直觉，但不能完全按集合论机械推导，因为 `any`、条件类型分发、对象可变性和 TypeScript 的可赋值规则包含工程化妥协。
 
 ---
 
@@ -173,6 +171,17 @@ const roles = ["admin", "user"] as const;
 2. 数组变为 `readonly` 元组
 3. 所有字面量类型不被"拓宽"（widening）
 
+更准确地说，这些效果作用于当前**字面量表达式的类型**。它不会调用 `Object.freeze`，不会生成任何运行时代码，也不会递归冻结先前创建再被引用的对象：
+
+```typescript
+const mutable = { retries: 3 };
+const config = { nested: mutable } as const;
+
+// config.nested 这个引用不能被重新指向别处，但被引用对象仍可修改。
+mutable.retries = 4;
+config.nested.retries = 5;
+```
+
 ---
 
 ## 6. 类型拓宽（Type Widening）与收窄（Narrowing）
@@ -196,8 +205,10 @@ let arr = [1, 2] as const; // arr: readonly [1, 2]
 |------|---------|-------------|
 | `let x = "hi"` | `string` | ✅ |
 | `const x = "hi"` | `"hi"` | ❌ |
-| `let x = "hi" as const` | `"hi"` | ❌ |
-| `let x: "hi" = "hi"` | `"hi"` | ❌（只能赋 "hi"） |
+| `let x = "hi" as const` | `"hi"` | 只能重新赋值为 `"hi"` |
+| `let x: "hi" = "hi"` | `"hi"` | 只能重新赋值为 `"hi"` |
+
+对象属性的拓宽还与可变性、上下文类型和 generic inference 有关，不是只看 `let`/`const`。完整机制见 [06 · 推断、上下文类型与 satisfies](06_inference_context_and_satisfies.md)。
 
 ---
 
@@ -211,7 +222,7 @@ let arr = [1, 2] as const; // arr: readonly [1, 2]
 }
 ```
 
-`strict: true` 会打开以下所有子选项：
+`strict: true` 控制一组会随 TypeScript 版本演进的选项，不能把某个版本的列表当成永久规范。本项目 TypeScript 6.0.3 下的核心成员包括：
 
 | 子选项 | 作用 | 不开会怎样 |
 |--------|------|-----------|
@@ -221,11 +232,101 @@ let arr = [1, 2] as const; // arr: readonly [1, 2]
 | `strictBindCallApply` | bind/call/apply 的类型检查 | 这些函数的参数可能不检查 |
 | `strictPropertyInitialization` | 类属性必须初始化 | 未初始化的属性编译通过 |
 | `noImplicitThis` | this 不能隐式 any | this 的拼写错误不会报错 |
-| `alwaysStrict` | 输出 "use strict" | 非严格模式的语义差异 |
+| `strictBuiltinIteratorReturn` | 内置迭代器返回值使用精确类型 | `.next().value` 可能泄漏 any |
+| `useUnknownInCatchVariables` | catch 原因默认为 unknown | 假定所有 throw 值都是 Error |
+
+此外，`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`、`noImplicitOverride`、`noImplicitReturns` 等不等同于 `strict`，但对生产项目非常有价值。
 
 ---
 
-## 8. TS 编译器工作流
+## 8. 类型空间和值空间必须分开思考
+
+同一个标识符有时只存在于类型空间，有时同时存在于值空间：
+
+| 声明 | 类型空间 | 值空间 | 常见用途 |
+|---|---:|---:|---|
+| `type` / `interface` | ✅ | ❌ | 静态结构 |
+| `class` | ✅ 实例类型 | ✅ 构造器值 | `new`、`instanceof` |
+| 普通 `enum` | ✅ | ✅ 对象 | 运行时成员访问 |
+| `const` / `function` | 可用 `typeof` 取得类型 | ✅ | 运行时值 |
+| `declare` | ✅ 描述 | 通常不生成 | 告诉 checker 外部值存在 |
+
+```typescript
+interface User { id: string }
+
+// ❌ User 运行时不存在，不能做 instanceof User
+// if (value instanceof User) {}
+
+class Account {
+  constructor(readonly id: string) {}
+}
+
+const account = new Account("a1");
+account instanceof Account; // 运行时检查构造器原型链
+```
+
+Agent 工具 schema 需要运行时对象；只有 `type ToolInput = ...` 不够。要么显式维护 schema 并从它推导类型，要么在构建期使用 Compiler API 生成运行时产物。
+
+---
+
+## 9. `object`、`{}`、`Object` 与 `Record` 不等价
+
+```typescript
+function acceptsObject(value: object) {}
+acceptsObject({});
+acceptsObject([]);
+acceptsObject(() => {});
+// acceptsObject("text"); // ❌ primitive
+```
+
+- `object`：排除 primitive，但包含数组和函数。
+- `{}`：在 strict null 检查下表示任何非 null/undefined 值，连字符串和数字也能赋入。
+- `Object`：JavaScript 包装对象接口，几乎不应作为“任意普通对象”使用。
+- `Record<PropertyKey, unknown>`：要求可按所有 PropertyKey 索引，通常比“普通 JSON 对象”更强，不能随意代替 object。
+
+验证 JSON object 常用运行时判断：
+
+```typescript
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+```
+
+是否排除特殊原型、Date、Map 或 class 实例取决于边界协议，不能只靠一个通用别名。
+
+---
+
+## 10. `void` 不等于“值严格为 undefined”
+
+函数返回位置的 `void` 主要表达“调用方不应使用返回值”：
+
+```typescript
+const callback: () => void = () => 123;
+// 合法：实现可以返回值，但通过 callback 调用时，结果按 void 丢弃。
+```
+
+这使 `array.forEach(item => output.push(item))` 等 JS 模式可用。它不意味着实现必须在运行时返回 undefined。
+
+若协议要求 Promise 明确不携带结果，可使用 `Promise<void>`；若需要检查一个值确实是 undefined，则类型应直接写 `undefined`。回调 `() => void` 也不代表 fire-and-forget 异步函数的 rejection 会被自动处理。
+
+---
+
+## 11. TypeScript 不是健全证明器
+
+为了兼容 JavaScript，TypeScript 有意允许一些无法完全证明安全的行为：
+
+- 可变数组协变；
+- 方法参数双变；
+- 未开启额外严格选项时的索引访问；
+- 类型断言和非空断言；
+- `any` 污染；
+- 外部 `.d.ts` 对运行时实现的声明可能错误。
+
+成熟心智模型不是“tsc 通过就绝对安全”，而是知道静态证据在哪里变弱，并在 `unknown` 边界、schema、只读接口和测试中补足。详见 [07 · 可赋值性、方差与健全性](07_assignability_variance_and_soundness.md)。
+
+---
+
+## 12. TS 编译器工作流
 
 ```
 .ts 源文件
@@ -242,6 +343,16 @@ let arr = [1, 2] as const; // arr: readonly [1, 2]
 ```
 
 **关键理解**：类型检查和代码生成是**分离**的。即使类型检查有错误，TS 默认仍然会生成 JS 代码（可通过 `noEmitOnError: true` 禁止）。
+
+还应区分三种常见执行链：
+
+```text
+tsc：parse → bind → check → emit
+tsx/esbuild：主要做语法转换，另跑 tsc 才有完整类型检查
+Node type stripping：擦除可擦除语法，不读取 tsconfig，也不做类型检查
+```
+
+“能运行 `.ts`”从来不等于“已经通过 TypeScript checker”。
 
 ---
 

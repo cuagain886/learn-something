@@ -43,16 +43,19 @@ messages = [{"role": "user", "content": "北京今天热吗？"}]
 resp = llm(messages, tools=tools)
 
 if resp.stop_reason == "tool_use":          # ② 模型请求调工具
+    messages.append(resp)                    # 先记录调用请求，再关联结果
     for call in resp.tool_calls:
-        args = validate(call.input, schema)  # 先校验参数（见第3节）
+        args = validate_schema_and_semantics(call.input, schema)
+        authorize(call.name, args, user, task)  # schema 合法不代表有权限
         try:
-            result = TOOL_FUNCS[call.name](**args)   # ③ 真正执行
-        except Exception as e:
-            result = {"error": str(e)}               # 错误也要回填（见第5节）
+            result = TOOL_BROKER.execute(call.name, args, idempotency_key=call.id)
+        except OutcomeUnknown as e:
+            result = reconcile(e.operation_id)       # 写超时先对账，不能盲重试
+        except ToolError as e:
+            result = e.to_model_safe_error()         # 不泄漏堆栈/密钥
         messages.append({"role": "user", "content": [
             {"type": "tool_result", "tool_use_id": call.id, "content": str(result)}  # ④ 回填
         ]})
-    messages.append(resp)          # 把模型的请求也存入历史，保持对话完整
     resp = llm(messages, tools=tools)   # ⑤ 模型基于结果继续
 ```
 
@@ -62,7 +65,7 @@ if resp.stop_reason == "tool_use":          # ② 模型请求调工具
 
 ## 3. 工具设计：决定 Agent 能力上限的地方 ⭐⭐
 
-模型用工具用得好不好，**80% 取决于工具定义写得好不好**。把工具定义当成"写给模型看的 API 文档"来对待。
+工具定义是工具调用质量最重要、也最可控的变量之一。把它当成“模型可读的 API 契约”，不仅要写清名称和参数，还要声明副作用、权限、失败语义、幂等性与成功后的验证方式。生产级设计详见 [工具契约与大规模工具发现](../systems-engineering/02-工具契约与大规模工具发现.md)。
 
 ### 3.1 描述（description）要清晰
 - 说清**这个工具做什么、什么时候该用、什么时候不该用**。模型靠它决定选哪个工具。
@@ -71,7 +74,7 @@ if resp.stop_reason == "tool_use":          # ② 模型请求调工具
 
 ### 3.2 Schema 要严格
 - 每个参数都写 `type`、`description`、必要时 `enum`（枚举可选值）、`required`。
-- **现代 API 在生成层面强制 Schema 合规**——输出保证是匹配你 schema 的合法 JSON。善用这点，能消灭大量"格式错误"。
+- 一些 API 在启用 strict/schema 约束时能保证输出满足其支持的 JSON Schema 子集；未启用严格模式、流式中间片段或不同供应商的行为可能不同。即使结构合法，`amount=1000000`、错误账户 ID 或越权资源仍可能在语义上危险。
 - 参数语义要明确（`date` 要说清格式："YYYY-MM-DD"），否则模型乱传。
 
 ### 3.3 工具粒度与数量
@@ -90,10 +93,10 @@ if resp.stop_reason == "tool_use":          # ② 模型请求调工具
 
 ## 4. 并行 vs 串行工具调用
 
-- **并行（Parallel）**⭐：一次返回里请求**多个互不依赖**的工具调用，同时执行。**2026 的标准模式**，大幅降低延迟。例：同时查三个城市的天气。
+- **并行（Parallel）**⭐：一次返回里请求多个工具调用；只有它们互不依赖、资源不冲突且执行器声明并发安全时才能同时执行。例：同时查询三个城市的天气。
 - **串行（Sequential）**：后一个工具依赖前一个的结果，必须排队。例：先 `search` 拿到 URL，再 `fetch` 那个 URL。
 
-工程上：你的执行器要能**识别并发安全的调用并行跑**，依赖链则串行。多数现代 API 原生支持模型一次发起多个 tool_call。
+工程上不能仅因为模型一次给出多个 call 就自动并发。执行器要检查 read/write effect、资源 key、依赖和事务边界；同一订单上的两个写操作即使语法独立也可能发生 lost update。
 
 ---
 
@@ -101,21 +104,45 @@ if resp.stop_reason == "tool_use":          # ② 模型请求调工具
 
 工具一定会失败（网络超时、参数非法、外部 API 报错）。处理得好不好，直接决定 Agent 能不能在真实环境活下来。
 
-原则：**把错误当成一种 Observation 喂回给模型，让它自我纠正**，而不是直接抛异常终止整个 Agent。
+原则：错误要进入**结构化错误代数**，由运行时决定重试、对账、换路、终止还是请求人工；模型可以参与选择替代方案，但不能决定一个有副作用的请求是否安全重放。
 
 ```python
 try:
-    result = call_tool(name, args)
-except ToolError as e:
-    # 回填一条模型能理解、能据此改正的错误信息
-    result = f"调用失败：{e}。请检查参数或换一种方式。"
+    result = broker.execute(operation)
+except InvalidArgument as e:
+    result = {"code": "INVALID_ARGUMENT", "field": e.field, "retryable": False}
+except TransientFailure as e:
+    result = retry_if_idempotent(operation, e.retry_after)
+except OutcomeUnknown as e:
+    result = reconcile_before_any_retry(e.operation_id)
 ```
 
 要点：
 - **错误信息要可操作**："city 参数必须是中文城市名，你传的 'Beijng' 拼写有误" 比 "Error 400" 有用得多。
 - **设重试上限**：别让模型在同一个失败工具上死磕，N 次失败后中止或换路。
-- **区分可恢复 vs 不可恢复错误**：可恢复的喂回让模型重试；不可恢复的（如权限不足）应直接终止并说明。
+- **错误至少分五类**：`INVALID_ARGUMENT`、`TRANSIENT`、`PERMISSION_DENIED`、`CONFLICT`、`OUTCOME_UNKNOWN`。其中最后一类不是失败，而是本地不知道远端是否已提交。
 - **校验先行**：执行前用 schema 校验参数（第 3.2），把一部分错误挡在执行之前。
+
+### 5.1 三层校验不能互相替代
+
+| 层 | 回答的问题 | 例子 |
+|----|------------|------|
+| 结构校验 | 字段/类型/枚举合法吗 | `currency` 是否是 enum |
+| 语义校验 | 参数组合在业务上成立吗 | 退款金额不超过可退余额 |
+| 策略/授权 | 当前主体能对这个资源做吗 | 用户、Agent、服务身份是否有订单权限 |
+
+JSON Schema 只能覆盖第一层的一部分。把另外两层写进 prompt，不能形成安全边界。
+
+### 5.2 工具 effect 决定重试语义
+
+| effect | 例子 | 默认处理 |
+|--------|------|----------|
+| PURE | 计算、格式转换 | 可安全重试/并行 |
+| READ | 查询订单 | 通常可重试，但要处理新鲜度/一致性 |
+| IDEMPOTENT_WRITE | 带幂等键更新工单 | 可按 operation ID 重放 |
+| NON_IDEMPOTENT_WRITE | 发邮件、转账 | 超时后先对账，审批后提交 |
+
+完整工具 contract、operation state machine 与 `OUTCOME_UNKNOWN` 见 [工具契约](../systems-engineering/02-工具契约与大规模工具发现.md) 和 [持久化执行](../systems-engineering/03-持久化执行与故障恢复.md)。
 
 ---
 
@@ -143,20 +170,30 @@ except ToolError as e:
 | 与人交互 | 向用户提问澄清（把"问人"也做成一个工具） |
 | 调用其他 Agent | 把子 Agent 暴露成工具（多智能体，[文档 05](05-多智能体协作模式.md)） |
 
-> **MCP（Model Context Protocol）** 是 2026 标准化"工具供给"的协议——把工具以统一接口暴露给任意 Agent。本专题先掌握 function calling 原理，MCP 在 [INDEX 阶段 4](../INDEX.md) 展开。
+> **MCP（Model Context Protocol）** 是连接模型应用与工具/资源的开放协议之一；它不替代本地 function calling 的动作表达，也不自动解决工具授权、幂等和 Agent 间任务协作。协议分层见 [Agent 协议与互操作边界](../systems-engineering/05-Agent协议与互操作边界.md)。
+
+### 7.1 大工具面的三种前沿手段
+
+当工具定义多到显著占用上下文或名称相互混淆时，不应全部平铺：
+
+1. **Namespace**：按领域/所有者分组，避免相邻工具重名和语义重叠。
+2. **Deferred loading / tool search**：先给工具目录或延迟定义，模型需要时再加载完整 schema。
+3. **Programmatic Tool Calling**：让模型在受控运行时写一段程序组合多个合格工具，适合中间数据量大、每一步不需要重新进行模型判断的有界流程。
+
+第三种不是“让模型随便执行代码”。可调用工具、网络、secret、CPU/时间和输出仍要由沙箱/allowlist 控制。当前 OpenAI 工具文档已把 function calling、tool search、Programmatic Tool Calling、内置工具和远程 MCP 明确区分。
 
 ---
 
 ## 8. 常见坑
 
-- **工具描述含糊** → 模型选错工具或不会用。最高频问题。
+- **工具描述含糊** → 模型可能选错工具；用含混工具对、hard negative 和工具选择混淆矩阵验证，而不是凭印象归因。
 - **Schema 不严格**（缺 type/required/enum）→ 参数乱传、格式错。
-- **工具太多、不分组** → 选择准确率骤降。
+- **工具太多、不分组** → schema token、名称碰撞与选择歧义可能增加；用 namespace、授权过滤和按需发现控制候选面，并实测 discovery recall/precision。
 - **返回值原样塞回**（含大量噪声/超长）→ 上下文爆炸、干扰决策。
-- **工具失败直接抛异常** → Agent 整体崩溃；应喂回错误让其自愈。
+- **把所有错误都交给模型重试** → 非幂等写可能重复；运行时应按错误码与 effect 决策。
 - **信任模型给的参数直接执行** → 安全漏洞（注入、越权）。务必独立校验。
-- **高风险动作没有人工确认** → 不可逆事故（删库、错误转账）。
-- **靠文本解析工具调用** → 脆弱；用原生 function calling。
+- **高风险动作没有匹配风险的控制** → 对不可逆/高影响动作使用参数绑定 HITL、双人审批或直接禁止；低风险动作不应一律弹窗导致疲劳。
+- **靠自由文本解析工具调用** → 结构脆弱；优先用受 schema 约束的 function calling，仍需语义与授权校验。
 
 ---
 
@@ -164,9 +201,9 @@ except ToolError as e:
 
 - 工具使用 = 模型**发出**结构化调用请求、你的代码**执行**并把结果**回填**；模型从不自己执行。
 - **亲手实现一遍完整回合**（请求→执行→回填→继续）是必经之路。
-- **工具设计质量 ≈ Agent 能力上限**：描述清晰、Schema 严格、粒度/数量合理、返回对模型友好。
-- **并行工具调用**是 2026 标准，降延迟；有依赖才串行。
-- **错误当 Observation 喂回**让模型自愈，配重试上限和参数校验。
+- 工具契约定义 Agent 的可达动作和故障面：除描述/schema 外，还要声明 effect、错误、权限、幂等、验证、取消和结果未知语义；不能把系统上限归因于单一层。
+- 只有独立 work item 才适合并行；收益受 critical path、限流、join、取消与错误相关性约束。并行通常降 wall-clock，不保证降低 token、费用或尾延迟。
+- **错误进入结构化错误代数**：确定错误可供模型修正，瞬时错误按幂等策略重试，结果未知先对账。
 - **安全加在"执行"侧**：独立校验输入、最小权限、校验返回、高风险动作人工确认、沙箱。
 
 ## 10. 检验清单
@@ -174,11 +211,14 @@ except ToolError as e:
 - [ ] 能完整描述工具调用的五步回合，并说清"模型不执行工具"的含义。
 - [ ] 能写出一个带 description/schema/required/enum 的合格工具定义。
 - [ ] 知道为什么工具描述和返回格式如此影响 Agent 表现。
-- [ ] 能说清并行与串行工具调用的区别和适用。
-- [ ] 知道工具失败的正确处理方式，以及至少 3 条工具安全原则。
+- [ ] 能说清“模型一次发出多个调用”和“执行器可以安全并发”的区别。
+- [ ] 能区分结构、语义、授权三层校验。
+- [ ] 能按 PURE/READ/IDEMPOTENT_WRITE/NON_IDEMPOTENT_WRITE 说明重试策略。
+- [ ] 能解释 `OUTCOME_UNKNOWN` 为什么不能直接当失败重试。
+- [ ] 能比较 namespace、tool search/deferred loading 与 Programmatic Tool Calling。
 
 ---
 
 > 下一步：[03-反思模式Reflection](03-反思模式Reflection.md) —— 让 Agent 学会自我评估与纠错。
 >
-> 参考：[Function Calling 实现指南 2026 (PremAI)](https://blog.premai.io/llm-function-calling-complete-implementation-guide-2026/) · [Tool Use 标准与基准 (Zylos)](https://zylos.ai/research/2026-04-07-tool-use-function-calling-standards-benchmarks) · [Anthropic — Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
+> 一手资料：[OpenAI — Using tools](https://developers.openai.com/api/docs/guides/tools) · [Anthropic — Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) · [MCP 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)

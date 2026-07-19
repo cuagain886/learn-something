@@ -34,9 +34,9 @@ RAG 答案错了 ──────┤
 
 ---
 
-## 3. RAGAS 核心指标（业界标准）
+## 3. RAGAS 指标（常用实现之一）
 
-**RAGAS** 是最主流的 RAG 评估框架，特点是**用 LLM 当裁判（LLM-as-judge）自动打分，无需人工标注**。它的指标正好覆盖"检索"和"生成"两侧。
+**RAGAS** 是常用 RAG 评测框架之一，可用 LLM Judge/embedding 等近似一些检索与生成指标；它不等于 ground truth，也不能让评测“无需人工标注”。正式使用仍需领域人工锚点、oracle 审计、版本钉死和误差校准。
 
 评估需要的数据通常是四元组：`question`（问题）、`contexts`（检索到的 chunk）、`answer`（模型生成的答案）、`ground_truth`（标准答案，部分指标需要）。
 
@@ -87,14 +87,14 @@ RAG 答案错了 ──────┤
 
 ### 4.1 黄金测试集（Golden Dataset）
 人工精心标注的"问题 - 标准答案 -（理想情况下还有）相关 chunk"集合。
-- **质量最高，但人工成本高**。
-- **建议**：哪怕只有 **30~50 条**高质量、覆盖典型场景和边界情况的样本，也远胜于没有。先从小做起。
+- 人工集可以表达领域意图与风险，但不天然是真值：需双标/仲裁、标注指南、snapshot、证据 span 与一致性统计，并记录争议项。
+- 少量高质量样本可用于启动错误发现，但样本量应由任务分层、指标方差、MDE 和风险决定；几十条通常不足以证明小幅提升或低频严重失败。
 
 ### 4.2 合成数据生成（Synthetic Data Generation）
-用 LLM 从你的文档里**自动生成问答对**：给 LLM 一段 chunk，让它"基于这段内容出一个问题并给出答案"。RAGAS、LlamaIndex 都内置这类生成器。
-- **优点**：快速规模化、覆盖广。
-- **缺点**：质量参差，要**抽样人工审核**，剔除太简单/不合理的题。
-- 实用做法：合成生成 + 人工筛选，兼顾规模和质量。
+用 LLM 从文档/世界状态生成候选问答与证据集合；生成器、prompt、模型和 source snapshot 都要版本化。
+- **优点**：能定向扩充结构化切片和 hard-negative 变体。
+- **缺点**：容易继承生成器偏好、产生“看到 chunk 才会问”的简单题，并遗漏真实用户表达；需人工锚点、去重、污染检查和真实流量切片。
+- 合成题用于覆盖与压力测试，不能替代按目标用户分布采样的 locked holdout。
 
 ### 4.3 线上真实流量
 积累真实用户的问题，结合用户反馈（点赞/点踩、是否追问、是否转人工）做评估。**最贴近真实分布**，但要做好日志和反馈采集。
@@ -145,7 +145,7 @@ RAGAS 等用 LLM 当裁判，方便但有坑：
 - **裁判模型有偏好**：可能偏向长答案、偏向某种风格。
 - **不稳定**：同一输入多次打分可能不同（可多次取平均、设低温度）。
 - **要校准**：用一小批人工标注样本校准 LLM 裁判的打分，确认它和人类判断一致，再大规模用。
-- **裁判要够强**：用能力强的模型当裁判（裁判比被评的还弱就不可靠）。
+- **裁判能力不是充分条件**：更强模型也可能有位置/长度/自偏好和注入风险；是否可用要看它相对人工锚点的混淆矩阵与切片误差。
 
 ---
 
@@ -162,25 +162,177 @@ RAGAS 等用 LLM 当裁判，方便但有坑：
 
 ---
 
-## 9. 本章小结
+## 9. 深入：不完备 Oracle、Claim 级引用与统计比较
+
+### 9.1 先定义 RAG estimand 与 snapshot
+
+```yaml
+population: "中文企业政策问答，按近 30 天流量分层"
+knowledge_snapshot: kb-2026-07-15
+access_context: user/tenant ACL fixture v8
+answer_outcome: claim-correct + citation-complete + no-unauthorized-evidence
+retrieval_unit: source evidence span
+trials: paired candidate/baseline
+```
+
+同一问题在不同知识库版本、用户权限和时间下可能有不同正确答案。评测样本必须绑定 `knowledge_snapshot + ACL + valid_time`，否则历史分数不可复现。
+
+### 9.2 Retrieval oracle 通常不完备
+
+对查询 `q`，全库真正相关集合 `R_q` 很难穷举。只把一条“黄金 chunk”标为 relevant，会错误惩罚其它同样有效证据；把未标注文档当 non-relevant 又会低估新系统。
+
+构建方法：
+
+1. 对 BM25、dense、hybrid、候选新系统做 top-depth pooling；
+2. 去重并盲化系统来源；
+3. 领域人员按 `irrelevant / useful / directly_supports / authoritative` 分级；
+4. 对未评判文档标 `unjudged`，不自动等同负例；
+5. 追加随机样本估计 pool 漏标；
+6. 新系统大量返回 pool 外候选时重新 judging，避免 incumbent bias。
+
+Oracle provenance 要记录标注者、证据 span、时间、ACL、rubric 和 adjudication。
+
+### 9.3 标准 IR 指标及边界
+
+\[
+Precision@k=\frac{|top_k\cap R_q|}{k},\qquad
+Recall@k=\frac{|top_k\cap R_q|}{|R_q|}
+\]
+
+若 `R_q` 不完备，Recall 分母不可信。还可用：
+
+\[
+MRR=\frac1{|Q|}\sum_q\frac1{rank_q(first\ relevant)}
+\]
+
+适合只需一个答案证据的任务；多跳需要全部 evidence，不应只看 first relevant。
+
+分级相关性使用：
+
+\[
+DCG@k=\sum_{i=1}^{k}\frac{2^{rel_i}-1}{\log_2(i+1)},\qquad
+nDCG@k=DCG@k/IDCG@k
+\]
+
+它奖励权威/直接支持证据排在前面。定义 relevance grade 时要纳入来源质量、时效和用户权限，不能只看主题相似。
+
+### 9.4 多跳证据集合
+
+若答案需 evidence set `E_q={e1,e2,e3}`，单块 recall 会掩盖缺 hop：
+
+```text
+Evidence Coverage = retrieved required hops / total required hops
+All-Evidence Success = I[E_q ⊆ retrieved]
+Connection Correctness = 实体/时间/关系 join 是否正确
+```
+
+一个系统召回 2/3 个 hop 可能 Context Recall 很高，却无法正确回答。应报告 all-evidence success 和每 hop 的条件召回。
+
+### 9.5 Hard negatives 才能测出排序器差异
+
+随机负例太容易。Hard negatives 包括：
+
+- 主题相同但答案不同；
+- 同一政策旧版本；
+- 实体同名但租户/地区不同；
+- 含 query 关键词但不回答；
+- 能支持相反结论的冲突证据；
+- 权限不允许但语义高度相关；
+- 合成改写与真实文档高度相似却事实错误。
+
+训练和测试 hard negatives 要隔离，防 reranker 记模板。权限不允许的候选应在检索前阻断，同时可作为安全负面测试，不进入模型上下文。
+
+### 9.6 Claim-level Faithfulness 与 Citation Correctness
+
+将答案拆为需要外部证据的原子 claims `c_i`，建立 claim–citation 矩阵：
+
+\[
+M_{ij}=\mathbb 1[source_j\ entails\ claim_i]
+\]
+
+指标：
+
+\[
+Citation\ Completeness=
+\frac{\sum_iw_i\mathbb 1[\exists j:M_{ij}=1]}{\sum_iw_i}
+\]
+
+\[
+Citation\ Precision=
+\frac{\#\ cited\ sources\ that\ support\ associated\ claims}
+{\#\ cited\ sources}
+\]
+
+还应检查：
+
+- 引用是否能解析到固定 `doc_version/span/hash`；
+- 来源是否权威、有效且用户有权访问；
+- 多来源冲突是否披露；
+- 一条 citation 是否被错误地挂在包含多个 claim 的长句末尾；
+- 生成器是否引用了 contextual summary/HyDE 等派生提示而非原始证据。
+
+### 9.7 Judge pipeline 的误差分解
+
+Claim eval 常有三步：
+
+```text
+claim extraction → evidence alignment → entailment judgment
+```
+
+任何一步都可能错。用人工 anchor 分别测：claim 漏拆/过拆、citation 对齐、entailment TP/FP/FN；候选答案可能对 Judge 做 prompt injection，应作为不可信数据隔离。Judge 版本升级要做 anchor 双跑和时间序列桥接，详见 [evaluation/03](../evaluation/03-评估方法与LLM裁判.md)。
+
+### 9.8 Paired evaluation 与不确定性
+
+同一 query/snapshot 上运行基线 A 和候选 B，计算逐题差 `d_i`，按 query/task 聚类 bootstrap 置信区间。二元端到端成功可用 McNemar 检验，连续 nDCG/faithfulness 可用配对 bootstrap/置换；同时报告效应量与 CI，不只报 p-value。
+
+预定义：
+
+- primary outcome（如 claim-correct & citation-complete）；
+- MDE 与功效；
+- 安全/成本/p95 非劣门槛；
+- 任务切片和多重比较处理；
+- 每个 query 的 Agent/environment 随机重复。
+
+### 9.9 诊断矩阵
+
+| Oracle context | Retrieved context | Answer | 结论 |
+|---|---|---|---|
+| 足够 | 缺证据 | 错 | 数据/检索/过滤瓶颈 |
+| 足够 | 足够 | 错 | 组装/生成/引用瓶颈 |
+| 不足 | 看似足够 | 错 | 题目或 oracle 有问题 |
+| 足够 | 含冲突/噪声 | 不稳 | 重排/冲突策略/鲁棒性 |
+| closed-book 对 | retrieval 后错 | 错 | 检索引入有害上下文 |
+
+### 9.10 Trace 与敏感数据
+
+RAG trace 至少记录 query lineage、snapshot、ACL decision、候选 ranks/scores、reranker truncation、最终 selected evidence 与 citation mapping。原始 query/chunk 可能含敏感数据，应默认使用 hash/ref/分类，内容采集 opt-in；禁止将未授权候选为了“调试”写入普通 trace。
+
+---
+
+## 10. 本章小结
 
 - **没有评估就没有工程**——量化是优化的前提。
-- **核心思想：分开评估检索和生成**；答错先看检索指标（recall），再看生成指标（faithfulness）。
+- 核心思想是分开评估知识存在、检索、上下文组装和生成；closed-book/oracle-context 能定位上限与负增益。
 - 检索侧：**Context Recall**（全不全）、**Context Precision**（准不准/排序好不好）。
 - 生成侧：**Faithfulness**（反幻觉，最关键）、**Answer Relevancy**（切不切题）、Answer Correctness（对不对）。
-- 评估集：黄金集（质量高）+ 合成生成（规模化，需审核）+ 线上反馈（最真实）；哪怕 30~50 条也比没有强。
+- 评估集需绑定知识快照、ACL 和时间；少量样本可启动诊断，正式比较的样本量由 MDE、方差、切片和风险决定。
 - 像跑单元测试一样跑 RAGAS，每次改动都对比指标。
 - 线上靠**可观测性**：全链路 trace + 延迟/成本/质量监控 + 用户反馈闭环。
 - LLM-as-judge 方便但要校准、防偏差。
 
-## 10. 检验清单
+## 11. 检验清单
 
 - [ ] 拿到"RAG 答错"的 case，能说出"先查 Context Recall 再查 Faithfulness"的诊断流程。
 - [ ] 能解释 Context Recall vs Precision、Faithfulness vs Answer Relevancy 的区别。
 - [ ] 知道至少三种获取评估数据的方法及各自优缺点。
 - [ ] 知道线上 trace 要记录哪些字段，以及为什么没它就无法排查。
 - [ ] 了解 LLM-as-judge 的局限和校准方法。
+- [ ] 能解释 relevance pool 不完备以及为什么 unjudged 不等于 irrelevant。
+- [ ] 能计算/解释 MRR、nDCG、all-evidence success 与 claim-citation 矩阵。
+- [ ] 能为两个 RAG 版本设计配对统计与知识 snapshot/ACL 固定。
 
 ---
 
 > 下一步：[08-生产工程化与最佳实践](08-生产工程化与最佳实践.md) —— 真实生产环境的工程问题。
+>
+> 深入参考：[RAG Evaluation Survey（2025）](https://arxiv.org/abs/2504.14891) · [evaluation/](../evaluation/00-评估与可观测学习总览.md)

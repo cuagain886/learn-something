@@ -1,126 +1,279 @@
 /**
  * ============================================================
- * 第 13 课：装饰器（Decorators，TS 5+ 标准装饰器）
+ * 第 13 课：类型安全的标准装饰器
  * ============================================================
- * 本节学什么：
- *   1. 什么是装饰器
- *   2. 方法装饰器
- *   3. 装饰器工厂（带参数的装饰器）
- *   4. 字段装饰器
- *   5. 类装饰器
- *   6. 用 context.addInitializer 自动绑定 this
  *
- * 运行：  npx tsx src/13-decorators.ts
+ * 运行：npx tsx src/13-decorators.ts
  *
- * 重要说明：
- *   - 本文件用的是 TC39「标准装饰器」（TypeScript 5.0+ 默认支持），
- *     无需在 tsconfig 里开启 experimentalDecorators。
- *   - 装饰器是「用 @xxx 贴在类、方法、字段上」的函数，能在「定义阶段」
- *     拦截/增强这些成员。常见于框架（Angular、NestJS 等）。
- *   - 标准装饰器签名固定为 (value, context) 两个参数，context 描述被装饰对象的信息。
+ * 这是 TC39 标准装饰器语义，不是 `experimentalDecorators` 的旧式三参数 API。
+ * 装饰器在类定义阶段运行，是会被 emit 到 JavaScript 的元编程；它不是类型注解。
+ *
+ * 本课集中验证：
+ *
+ * 1. 泛型方法装饰器必须保持 this、参数元组和返回值之间的关系；
+ * 2. 工厂从上到下求值，装饰器从下到上应用；
+ * 3. `addInitializer` 的实例初始化时机与 this 绑定；
+ * 4. 字段装饰器返回的是初值转换器，不是属性描述符；
+ * 5. 类装饰器新增的运行时字段不会自动扩宽原 class 的静态实例类型。
+ *
+ * 第 26 课继续深入 accessor、metadata、emit helper 和完整初始化顺序。
  */
 
-// ------------------------------------------------------------
-// 2. 方法装饰器：在方法前后插入日志
-// ------------------------------------------------------------
-// 标准方法装饰器：第一个参数是原方法，第二个是上下文。
-// 返回一个「替换后的新方法」。
-function log(originalMethod: any, context: ClassMethodDecoratorContext) {
-  const methodName = String(context.name);
-  function replacement(this: any, ...args: any[]) {
-    console.log(`[LOG] 调用 ${methodName}(${args.join(', ')})`);
-    const result = originalMethod.call(this, ...args);
-    console.log(`[LOG] ${methodName} 返回 ${result}`);
-    return result;
-  }
-  return replacement;
-}
+import assert from 'node:assert/strict';
+
+type Method<This, Args extends unknown[], Return> = (
+  this: This,
+  ...args: Args
+) => Return;
+
+const methodLog: string[] = [];
 
 // ------------------------------------------------------------
-// 3. 装饰器工厂：先调用一个函数，返回真正的装饰器（这样能携带参数）
+// 1. 保持完整调用关系的泛型方法装饰器
 // ------------------------------------------------------------
-function minimum(min: number) {
-  // 返回的才是装饰器本体
-  return function (originalMethod: any, _context: ClassMethodDecoratorContext) {
-    return function (this: any, value: number) {
-      // 对入参做约束：小于 min 就抬升到 min
-      const safe = value < min ? min : value;
-      return originalMethod.call(this, safe);
+
+function logged<This, Args extends unknown[], Return>(
+  original: Method<This, Args, Return>,
+  context: ClassMethodDecoratorContext<This, Method<This, Args, Return>>,
+): Method<This, Args, Return> {
+  const name = String(context.name);
+
+  return function (this: This, ...args: Args): Return {
+    methodLog.push(`${name}:before:${JSON.stringify(args)}`);
+    try {
+      return original.call(this, ...args);
+    } finally {
+      methodLog.push(`${name}:after`);
+    }
+  };
+}
+
+/**
+ * 专用装饰器比 `(...args: any[]) => any` 更有价值：它明确要求第一个参数为 number，
+ * 同时保留剩余参数和返回类型。把 any 写进公共装饰器会切断调用方的推断链。
+ */
+function minimum(minimumValue: number) {
+  return function <This, Rest extends unknown[], Return>(
+    original: Method<This, [value: number, ...rest: Rest], Return>,
+    context: ClassMethodDecoratorContext<
+      This,
+      Method<This, [value: number, ...rest: Rest], Return>
+    >,
+  ): Method<This, [value: number, ...rest: Rest], Return> {
+    assert.equal(context.kind, 'method');
+
+    return function (
+      this: This,
+      value: number,
+      ...rest: Rest
+    ): Return {
+      return original.call(this, Math.max(value, minimumValue), ...rest);
     };
   };
 }
 
 // ------------------------------------------------------------
-// 4. 字段装饰器：返回一个「初始化转换函数」，用来加工字段初始值
+// 2. 字段装饰器返回“每个实例各调用一次”的初值转换器
 // ------------------------------------------------------------
-function uppercase(_value: undefined, _context: ClassFieldDecoratorContext) {
-  // 返回的函数接收字段的初始值，返回处理后的值
-  return function (initialValue: string) {
+
+function uppercase<This>(
+  _unused: undefined,
+  context: ClassFieldDecoratorContext<This, string>,
+): (this: This, initialValue: string) => string {
+  assert.equal(context.kind, 'field');
+
+  return function (this: This, initialValue: string): string {
     return initialValue.toUpperCase();
   };
 }
 
 // ------------------------------------------------------------
-// 6. addInitializer：在实例初始化时执行逻辑（这里把方法 this 绑定到实例）
+// 3. addInitializer 在实例字段初始化前绑定方法
 // ------------------------------------------------------------
-function bound(originalMethod: any, context: ClassMethodDecoratorContext) {
-  const methodName = context.name;
-  context.addInitializer(function (this: any) {
-    // 实例创建时，把该方法替换为「永久绑定 this」的版本，
-    // 这样即使把方法当回调单独传出去，this 也不会丢。
-    this[methodName] = this[methodName].bind(this);
+
+function bound<This, Args extends unknown[], Return>(
+  _original: Method<This, Args, Return>,
+  context: ClassMethodDecoratorContext<This, Method<This, Args, Return>>,
+): void {
+  if (context.private) {
+    throw new TypeError(`@bound 不支持私有成员 ${String(context.name)}`);
+  }
+  if (context.static) {
+    throw new TypeError(`@bound 只用于实例方法 ${String(context.name)}`);
+  }
+
+  context.addInitializer(function (this: This): void {
+    const current = context.access.get(this);
+    Object.defineProperty(this as object, context.name, {
+      configurable: true,
+      enumerable: false,
+      writable: true,
+      value: current.bind(this),
+    });
   });
 }
 
 // ------------------------------------------------------------
-// 5. 类装饰器：贴在 class 上，可增强或替换整个类
+// 4. 类装饰器的“运行时增强、静态不增宽”边界
 // ------------------------------------------------------------
-function withTimestamp<T extends new (...args: any[]) => object>(
-  Target: T,
-  _context: ClassDecoratorContext,
-) {
-  // 返回一个继承原类的新类，额外加一个 createdAt 字段
-  return class extends Target {
-    createdAt = new Date().toISOString();
-  };
+
+interface Timestamped {
+  readonly createdAt: string;
 }
 
-// ------------------------------------------------------------
-// 把上面这些装饰器用起来
-// ------------------------------------------------------------
+// TS 的 mixin 构造规则要求“单个 any[] rest 参数”。这里的 any 只用于把原构造参数
+// 原样转发给 super，不读取也不改写参数；公共实例关系仍由 Target 保存。
+type MixinConstructor = new (...args: any[]) => object;
+
+function withTimestamp<Target extends MixinConstructor>(
+  Original: Target,
+  context: ClassDecoratorContext<Target>,
+): Target {
+  assert.equal(context.kind, 'class');
+
+  const Replacement = class extends Original implements Timestamped {
+    constructor(...args: any[]) {
+      super(...args);
+    }
+
+    readonly createdAt = new Date().toISOString();
+  };
+
+  // 标准类装饰器必须返回可替换原构造器的值。这里的断言刻意把“新增字段”隐藏起来，
+  // 因为装饰器语法不会改写 class declaration 暴露给调用方的实例类型。
+  return Replacement as Target;
+}
+
 @withTimestamp
 class Calculator {
-  @uppercase
-  label = 'calc'; // 初始化时会被转成 'CALC'
+  constructor(readonly scale: number) {}
 
-  @log
-  add(a: number, b: number): number {
-    return a + b;
+  @uppercase
+  label = 'calc';
+
+  @logged
+  add(left: number, right: number): number {
+    return (left + right) * this.scale;
   }
 
   @minimum(0)
   setLevel(level: number): number {
-    return level; // 经 @minimum(0) 处理，负数会被抬升为 0
+    return level;
   }
 
   @bound
-  greet(): string {
-    return `Hello from ${this.label}`;
+  greet(prefix: string): string {
+    return `${prefix} from ${this.label}`;
   }
 }
 
-console.log('=== 第 13 课：装饰器 ===');
-const calc = new Calculator();
-console.log('label =', calc.label); // 'CALC'（被 @uppercase 转换）
-calc.add(2, 3); // 触发 @log 的前后日志
-console.log('setLevel(-5) =', calc.setLevel(-5)); // 0（被 @minimum(0) 抬升）
+const calculator = new Calculator(1);
+const sum: number = calculator.add(2, 3);
+assert.equal(sum, 5);
+assert.deepEqual(methodLog, ['add:before:[2,3]', 'add:after']);
+assert.equal(calculator.label, 'CALC');
+assert.equal(calculator.setLevel(-5), 0);
 
-// @bound 的效果：把方法单独取出来调用，this 依然正确
-const detached = calc.greet;
-console.log('detached() =', detached());
+const detached = calculator.greet;
+assert.equal(detached('hello'), 'hello from CALC');
+assert.equal(Object.hasOwn(calculator, 'greet'), true);
 
-// @withTimestamp 给类加上了 createdAt
-console.log('createdAt =', (calc as any).createdAt);
+// @withTimestamp 返回的是 `class extends Original`：公开的 Calculator.prototype
+// 是替换子类的空原型，原方法保留在它的父原型。@bound 又在实例上创建同名绑定方法。
+assert.equal(
+  Object.prototype.hasOwnProperty.call(Calculator.prototype, 'greet'),
+  false,
+);
+const originalCalculatorPrototype: unknown = Object.getPrototypeOf(
+  Calculator.prototype,
+);
+assert.equal(
+  typeof originalCalculatorPrototype === 'object' &&
+    originalCalculatorPrototype !== null &&
+    Object.prototype.hasOwnProperty.call(originalCalculatorPrototype, 'greet'),
+  true,
+);
 
-// 让本文件成为独立模块：每个 .ts 文件都有独立作用域，避免与其它课程文件的同名声明在全局冲突。
+const runtimeTimestamp: unknown = Reflect.get(calculator, 'createdAt');
+assert.equal(typeof runtimeTimestamp, 'string');
+
+if (false) {
+  // @ts-expect-error logged 保持 number 返回关系，没有把它退化成 any。
+  const wrongResult: string = calculator.add(1, 2);
+
+  // @ts-expect-error 类装饰器新增值不会自动出现在 Calculator 的静态实例类型中。
+  console.log(calculator.createdAt);
+
+  // @ts-expect-error 类装饰器替换构造器后仍保持原构造参数契约。
+  new Calculator();
+
+  console.log(wrongResult);
+}
+
+// ------------------------------------------------------------
+// 5. 求值顺序与应用顺序不是一回事
+// ------------------------------------------------------------
+
+const decoratorOrder: string[] = [];
+
+function traced(label: string) {
+  decoratorOrder.push(`evaluate:${label}`);
+
+  return function <This, Args extends unknown[], Return>(
+    original: Method<This, Args, Return>,
+    _context: ClassMethodDecoratorContext<This, Method<This, Args, Return>>,
+  ): Method<This, Args, Return> {
+    decoratorOrder.push(`apply:${label}`);
+
+    return function (this: This, ...args: Args): Return {
+      decoratorOrder.push(`call:${label}:before`);
+      try {
+        return original.call(this, ...args);
+      } finally {
+        decoratorOrder.push(`call:${label}:after`);
+      }
+    };
+  };
+}
+
+class OrderProbe {
+  @traced('outer')
+  @traced('inner')
+  run(): 'body' {
+    decoratorOrder.push('call:body');
+    return 'body';
+  }
+}
+
+assert.deepEqual(decoratorOrder, [
+  'evaluate:outer',
+  'evaluate:inner',
+  'apply:inner',
+  'apply:outer',
+]);
+
+assert.equal(new OrderProbe().run(), 'body');
+assert.deepEqual(decoratorOrder, [
+  'evaluate:outer',
+  'evaluate:inner',
+  'apply:inner',
+  'apply:outer',
+  'call:outer:before',
+  'call:inner:before',
+  'call:body',
+  'call:inner:after',
+  'call:outer:after',
+]);
+
+console.log('=== 第 13 课：类型安全标准装饰器 ===');
+console.log({
+  label: calculator.label,
+  sum,
+  level: calculator.setLevel(-5),
+  detached: detached('hi'),
+  runtimeTimestamp,
+  methodLog,
+  decoratorOrder,
+});
+
 export {};
