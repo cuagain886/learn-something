@@ -1,0 +1,5 @@
+build/
+**/build/
+**/target/
+*.hprof
+hs_err_pid*.log
