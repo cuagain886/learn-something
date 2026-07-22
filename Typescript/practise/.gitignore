@@ -1,0 +1,13 @@
+# 依赖（npm install 生成，体积大，不提交）
+node_modules/
+
+# 编译产物
+dist/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 编辑器/系统
+.DS_Store
+Thumbs.db

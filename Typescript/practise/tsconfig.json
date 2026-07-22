@@ -1,0 +1,45 @@
+{
+  // practise/tsconfig.json —— 基础练习专用编译配置。
+  // 配置本身就是一节小课：每个选项都有中文说明。
+  "compilerOptions": {
+    // 编译产物用的语法版本。ES2022 已覆盖 class 私有字段、顶层 await 等现代特性。
+    "target": "ES2022",
+
+    // 内置类型库。基础练习用不到 DOM，只取 ES2022。
+    "lib": ["ES2022"],
+
+    // 加载 @types/node，这样 console、setTimeout、node:assert 等才有类型。
+    "types": ["node"],
+
+    /* ============ 模块系统 ============ */
+    // ESM 模块语法。"Bundler" 解析策略配合 tsx，导入时不必写文件扩展名，对初学者最友好。
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    // 强制区分「类型导入」与「值导入」，养成 `import type` 的好习惯。
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+
+    /* ============ 类型检查严格度（练习就开严格，养好习惯） ============ */
+    // 一键开启所有严格检查（等价于 strictNullChecks + noImplicitAny + strictFunctionTypes 等）。
+    "strict": true,
+
+    // 读取数组下标 / 对象动态键时结果自动包含 undefined，逼你处理「可能不存在」。
+    "noUncheckedIndexedAccess": true,
+
+    // 所有分支必须显式返回；switch 不允许意外贯穿。
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // 练习里经常声明演示变量却不使用，这两个关掉以免打断节奏（真实项目建议开启）。
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    /* ============ 其它 ============ */
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  // 纳入编译范围：本目录下所有 .ts（不含已安装的依赖）。
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

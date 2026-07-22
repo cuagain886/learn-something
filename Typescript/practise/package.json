@@ -1,0 +1,26 @@
+{
+  "name": "ts-practise",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript 基础动手练习（循序渐进，自己写代码掌握 TS，而不是只会看）",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "start": "tsx 01_basic_types/practice.ts",
+    "verify": "tsx 01_basic_types/solution.ts && tsx 02_inference/solution.ts && tsx 03_functions/solution.ts && tsx 04_interfaces/solution.ts && tsx 05_union_narrowing/solution.ts && tsx 06_null_safety/solution.ts && tsx 07_arrays_tuples/solution.ts && tsx 08_classes/solution.ts && tsx 09_generics/solution.ts && tsx 10_utility_types/solution.ts && tsx 11_async/solution.ts && tsx 12_type_gymnastics/solution.ts"
+  },
+  "keywords": [
+    "typescript",
+    "practice",
+    "exercises"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3"
+  }
+}
