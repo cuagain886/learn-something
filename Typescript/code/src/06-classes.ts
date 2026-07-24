@@ -183,6 +183,7 @@ assert.equal(SystemClock.prototype instanceof Object, true);
 // 5. 方法、箭头字段和 accessor 分别放在哪里
 // ---------------------------------------------------------------------------
 
+//普通类方法定义在原型上，所有实例共享；箭头函数类字段定义在实例自身，每个实例都会创建一份新的函数。
 class Handler {
   count = 0;
 
@@ -232,6 +233,11 @@ assert.equal(detachedMethod.call(handlerA), 2);
 // 6. 继承、override 与初始化顺序
 // ---------------------------------------------------------------------------
 
+
+/*
+基类构造函数里调用可重写方法，会动态分派到派生类实现。
+派生类字段初始化发生在 super() 完成之后。
+*/
 class BaseProbe {
   readonly observedDuringBaseConstruction: string | undefined;
 
@@ -260,6 +266,17 @@ class DerivedProbe extends BaseProbe {
 const probe = new DerivedProbe();
 assert.equal(probe.observedDuringBaseConstruction, undefined);
 assert.equal(probe.currentPhase(), 'derived');
+
+/* 
+1. 创建 DerivedProbe 实例对象
+2. 调用 BaseProbe 构造函数
+3. BaseProbe 构造函数调用 this.phase()
+4. 动态分派到 DerivedProbe.phase()
+5. 此时 phaseLabel 尚未初始化，因此返回 undefined
+6. BaseProbe 构造函数结束
+7. 初始化 DerivedProbe 字段 phaseLabel = 'derived'
+8. 构造完成
+*/
 
 class BaseField {
   value = 'base-field';

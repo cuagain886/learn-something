@@ -115,7 +115,7 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K]; };
 ```typescript
 // 给每个属性名加上 get 前缀
 type Getters<T> = {
-    [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
+    [K in keyof T as 'get${Capitalize<string & K>}']: () => T[K];
 };
 // Person → { getName: () => string; getAge: () => number }
 
@@ -421,6 +421,7 @@ TypeScript 通常自动推断方差。`in`/`out` 方差注解是用于极少数�
 
 在某些函数式语言中可以抽象“接收类型构造器 F，再操作 F<A>”。TypeScript 没有原生 higher-kinded types：
 
+
 ```text
 想表达：F<_> 作为类型参数
 实际 TS：通常需要 URI 映射、接口编码或具体重载模拟
@@ -428,7 +429,7 @@ TypeScript 通常自动推断方差。`in`/`out` 方差注解是用于极少数�
 
 复杂 HKT 模拟会增加声明、错误信息和 checker 成本。Agent 业务代码通常用具体 `Promise<T>`、`Result<T,E>`、`AsyncIterable<T>` 更清楚；只有库确实需要跨容器抽象时才承担编码复杂度。
 
----
+--- 
 
 ## 16. 类型级计算不会生成运行时实现
 

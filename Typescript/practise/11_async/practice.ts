@@ -30,7 +30,8 @@ async function fetchOrder(): Promise<{ id: number; total: number }> {
 //   提示：先 `await delay(ms)`，再 return value。
 // ------------------------------------------------------------
 async function delayValue(value: number, ms: number): Promise<number> {
-  return 0; // TODO: 先 `await delay(ms)`，再 `return value`
+  await delay(ms);
+  return value;
 }
 
 // ------------------------------------------------------------
@@ -41,7 +42,7 @@ async function delayValue(value: number, ms: number): Promise<number> {
 async function fetchUserAndOrder(): Promise<
   [{ id: number; name: string }, { id: number; total: number }]
 > {
-  return [await fetchUser(), await fetchOrder()]; // TODO: 改成 Promise.all 并行
+  return Promise.all([fetchUser(), fetchOrder()]); // TODO: 改成 Promise.all 并行
 }
 
 // ------------------------------------------------------------
@@ -49,7 +50,11 @@ async function fetchUserAndOrder(): Promise<
 //   提示：try { return await p } catch { return fallback }
 // ------------------------------------------------------------
 async function withFallback<T>(p: Promise<T>, fallback: T): Promise<T> {
-  return fallback; // TODO
+  try {
+    return await p;
+  } catch {
+    return fallback;
+  }
 }
 
 // ------------------------------------------------------------
@@ -57,7 +62,7 @@ async function withFallback<T>(p: Promise<T>, fallback: T): Promise<T> {
 //   要求：是 Error 就返回 message；否则 String(e)。
 // ------------------------------------------------------------
 function errMsg(e: unknown): string {
-  return ''; // TODO: e instanceof Error ? e.message : String(e)
+  return e instanceof Error ? e.message : String(e);
 }
 
 // ============================================================

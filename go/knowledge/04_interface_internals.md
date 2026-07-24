@@ -15,6 +15,20 @@ type eface struct {
     _type *_type         // 动态类型的元信息（是什么类型）
     data  unsafe.Pointer // 指向实际数据（值的拷贝，逃逸到堆）
 }
+
+type _type struct {
+    size       uintptr // 类型占用的内存大小（字节数）
+    ptrdata    uintptr // 包含指针的前缀大小（GC 垃圾回收扫描时用到）
+    hash       uint32  // 类型的哈希值，用于快速比较、Map key 匹配和类型断言
+    tflag      tflag   // 类型标记（如：是否是自定义类型、是否有额外类型信息等）
+    align      uint8   // 变量在内存中的对齐字节数
+    fieldAlign uint8   // 结构体字段在内存中的对齐字节数
+    kind       uint8   // 底层基础类型枚举（如 Float64, String, Struct, Pointer 等）
+    equal      func(unsafe.Pointer, unsafe.Pointer) bool // 比较两个该类型变量是否相等的函数
+    gcdata     *byte   // GC 标记位图，指示该类型内存布局中哪些位置是指针
+    str        nameOff // 类型名称字符串在可执行文件符号表中的偏移量
+    ptrToThis  typeOff // 指向“该类型的指针类型”的元数据偏移量（如 int -> *int）
+}
 ```
 
 ### 非空接口（有方法）→ iface
@@ -33,6 +47,7 @@ type itab struct {
 }
 ```
 
+	itab中记录的是类型和方法，里面包括了_type，而_type记录类型信息，这两个都是只初始化一次，data是存的每个interface里的具体值，每个实例的data都指向自己的地址
 **核心认知**：接口值 = **(类型信息, 数据指针)** 二元组。
 - 非空接口的 `itab` 里有 `fun` 数组——存着具体类型实现接口方法的**函数指针**，调用接口方法就是查这张表跳转（类似 C++ 的虚表 vtable）。
 - `itab` 是**缓存**的：同一对 (接口类型, 具体类型) 的 itab 全局只生成一次，存进 `itabTable`。
@@ -45,6 +60,7 @@ w ─▶ iface ┌─ tab ─▶ itab ┌─ inter ─▶ io.Writer 接口信息
            │              └─ fun[0] ─▶ (*os.File).Write 的地址
            └─ data ─▶ os.Stdout 的数据
 ```
+![[Pasted image 20260724101351.png]]
 
 ---
 
