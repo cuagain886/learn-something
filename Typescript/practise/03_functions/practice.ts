@@ -26,18 +26,18 @@ type Expect<T extends true> = T;
 // 第 1 题：基本参数与返回类型。返回 a + b。
 // ------------------------------------------------------------
 function add(a: number, b: number): number {
-  return 0; // TODO
+  return a+b; // TODO
 }
 
 // 第 2 题：默认参数。greeting 不传时默认 'Hello'，返回 `${greeting}, ${name}!`。
 function greet(name: string, greeting = 'Hello'): string {
-  return ''; // TODO
+  return `${greeting}, ${name}`; // TODO
 }
 
 // 第 3 题：rest 参数。把所有传入的数字累加。
 //   调用形如 sum(1, 2, 3, 4) → 10。
 function sum(...nums: number[]): number {
-  return 0; // TODO
+  return nums.reduce((acc, cur) => acc + cur, 0); // TODO
 }
 
 // ------------------------------------------------------------
@@ -45,7 +45,7 @@ function sum(...nums: number[]): number {
 //   它是一个函数：接收两个 number (a, b)，返回 number（负/零/正表示顺序）。
 //   把 unknown 换成正确的类型。
 // ------------------------------------------------------------
-type Comparator = unknown; // TODO: 写出函数类型表达式
+type Comparator = (a: number, b: number) => number; // TODO: 写出函数类型表达式
 type _q4 = Expect<Equal<Comparator, (a: number, b: number) => number>>;
 
 // ------------------------------------------------------------
@@ -56,11 +56,17 @@ type _q4 = Expect<Equal<Comparator, (a: number, b: number) => number>>;
 function format(input: number): string;
 function format(input: string): string;
 function format(input: number | string): string {
-  return ''; // TODO
+  if (typeof input === 'number') {
+    return `Number: ${input}`;
+  }
+  return `String: ${input}`;
 }
 
 // 第 6 题：void 回调。循环 n 次调用 action()。
 function repeat(n: number, action: () => void): void {
+  for (let i = 0; i < n; i++) {
+    action();
+  }
   // TODO: 用 for 循环调用 action 共 n 次
 }
 

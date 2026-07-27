@@ -20,7 +20,10 @@ import assert from 'node:assert/strict';
 //   提示：用 `if (typeof x === 'string')` 分支。
 // ------------------------------------------------------------
 function describe(x: string | number): string {
-  return ''; // TODO
+  if(typeof x === 'string'){
+    return 'str:' + x.length;
+  }
+  return "num:"+ x*x; // TODO
 }
 
 // ------------------------------------------------------------
@@ -39,7 +42,12 @@ interface Dog {
 type Pet = Cat | Dog;
 
 function speak(pet: Pet): string {
-  return ''; // TODO
+  if(pet.kind === 'cat'){
+    return pet.meow();
+  }
+  else{
+    return pet.bark();
+  }
 }
 
 // ------------------------------------------------------------
@@ -52,7 +60,12 @@ type Shape =
   | { kind: 'square'; size: number };
 
 function area(s: Shape): number {
-  return 0; // TODO
+  if(s.kind === 'circle'){
+    return Math.PI * s.radius * s.radius;
+  }
+  else{
+    return s.size * s.size;
+  }
 }
 
 // ------------------------------------------------------------
@@ -68,7 +81,16 @@ function assertNever(x: never): never {
 type Color = 'red' | 'green' | 'blue';
 
 function describeColor(color: Color): string {
-  return ''; // TODO: switch 处理三种，default 用 assertNever
+  switch(color){
+    case 'red':
+      return '赤';
+    case 'green':
+      return '绿';
+    case 'blue':
+      return '蓝';
+    default:
+      return assertNever(color);
+  }
 }
 
 // ============================================================

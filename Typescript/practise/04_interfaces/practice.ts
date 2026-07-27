@@ -26,6 +26,10 @@ type Expect<T extends true> = T;
 //   要求 User 拥有：id: number；name: string；email 可选 string；createdAt 只读 Date。
 // ------------------------------------------------------------
 interface User {
+  id: number,
+  name: string,
+  email?: string,
+  readonly createdAt: Date
   // TODO
 }
 type _q1 = Expect<
@@ -39,7 +43,8 @@ const bob: User = { id: 2, name: 'Bob', email: 'bob@x.com', createdAt: new Date(
 // 第 2 题：接口扩展。Admin 继承 User 的所有字段，再加一个 role。
 //   要求 role: 'admin' | 'super' | 'viewer'
 // ------------------------------------------------------------
-interface Admin {
+interface Admin extends User {
+  role: 'admin' | 'super' | 'viewer';
   // TODO: 用 extends User 扩展，并加上 role
 }
 type _q2 = Expect<
@@ -51,6 +56,7 @@ type _q2 = Expect<
 //   要求 Counts：任意 string 键都映射到 number。
 // ------------------------------------------------------------
 interface Counts {
+  [key: string]: number;
   // TODO: [key: string]: number
 }
 type _q3 = Expect<Equal<Counts, { [key: string]: number }>>;
@@ -62,6 +68,7 @@ const counts: Counts = { a: 1, b: 2 };
 //   提示：写成 `interface SearchFn { (query: string): string[] }`
 // ------------------------------------------------------------
 interface SearchFn {
+  (query: string):string[];
   // TODO
 }
 type _q4 = Expect<Equal<SearchFn, (query: string) => string[]>>;

@@ -256,4 +256,4 @@ owner: payments-security
 
 > 下一步：[02-Prompt注入与防御](02-Prompt注入与防御.md) —— 从攻击入口深入 provenance/taint、跨工具传播与出站数据控制。
 >
-> 主要参考：[OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) · [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/) · [OWASP Agentic AI Threats and Mitigations](https://genai.owasp.org/resource/agentic-ai-threats-and-mitigations/)
+> 主要参考：[OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) · [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/) · [OWASP Agentic AI Threats and Mitigations](https://genai.owasp.org/resource/agentic-ai-threats-and-mitigations/) · [Anthropic：Agentic misalignment](https://www.anthropic.com/research/agentic-misalignment)（2025-06，内部威胁式行为压力测试，ASI10 威胁建模的模型侧输入）

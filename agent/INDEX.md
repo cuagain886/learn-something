@@ -2,7 +2,7 @@
 
 > 本仓库的**总入口与学习路线图**。面向「应用层 / Agent 开发者」，聚焦如何**构建**能规划、调用工具、使用记忆、自主完成任务的 AI Agent。
 > 不深入 Transformer 内部，所有内容停留在"如何工程化地搭出可用、可靠、可上线的 Agent"层面。
-> 最近更新：2026-07-19。项目已完成一次 L3 深度审计：补齐形式化模型、测试时搜索、持久执行、协议边界、评测统计、安全控制平面与 RAG 数据生命周期，并用一手规范/论文校准时效性结论。审计证据见 [DEPTH_AUDIT](DEPTH_AUDIT.md)。
+> 最近更新：2026-07-26（定期复核：确认 MCP 2025-11-25 仍为最新规范、A2A 更新至 1.0.1，纳入 eval awareness 等 5 篇新一手工程文章）。2026-07-19 完成 L3 深度审计：补齐形式化模型、测试时搜索、持久执行、协议边界、评测统计、安全控制平面与 RAG 数据生命周期，并用一手规范/论文校准时效性结论。审计证据见 [DEPTH_AUDIT](DEPTH_AUDIT.md)。
 
 ---
 
@@ -326,7 +326,7 @@ Agent 能"采取真实世界行动"（发邮件、改数据库、转账），所
 - [Model Context Protocol — 2025-11-25 Specification](https://modelcontextprotocol.io/specification/2025-11-25) · [Authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
 - [A2A Protocol — v1.0 Specification](https://a2a-protocol.org/latest/specification/) · [A2A v1.0 announcement](https://a2a-protocol.org/latest/announcing-1.0/)
 - [Agent Skills — Specification](https://agentskills.io/specification) · [AAIF — Linux Foundation announcement](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)
-- [OpenAI Agents SDK — Running agents](https://openai.github.io/openai-agents-python/running_agents/) · [Human-in-the-loop](https://openai.github.io/openai-agents-python/human_in_the_loop/)
+- [OpenAI Agents SDK — Running agents](https://openai.github.io/openai-agents-python/running_agents/) · [Human-in-the-loop](https://openai.github.io/openai-agents-python/human_in_the_loop/) · [A practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)（官方入门导向指南）
 - [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
 - [AI Agents That Matter](https://arxiv.org/abs/2407.01502) · [τ-bench](https://arxiv.org/abs/2406.12045) · [MAST](https://arxiv.org/abs/2503.13657)
 - [OpenTelemetry — GenAI semantic conventions 独立仓库](https://github.com/open-telemetry/semantic-conventions-genai) · [核心站迁移说明](https://opentelemetry.io/docs/specs/semconv/gen-ai/)

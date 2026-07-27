@@ -19,14 +19,14 @@ import assert from 'node:assert/strict';
 //   提示：n.toString(16)。
 // ------------------------------------------------------------
 function toHex(nums: number[]): string[] {
-  return []; // TODO
+  return nums.map(n => n.toString(16)); // TODO
 }
 
 // ------------------------------------------------------------
 // 第 2 题：filter。保留 >= 18 的年龄。
 // ------------------------------------------------------------
 function adults(ages: number[]): number[] {
-  return []; // TODO
+  return ages.filter(age => age >= 18); // TODO
 }
 
 // ------------------------------------------------------------
@@ -34,7 +34,7 @@ function adults(ages: number[]): number[] {
 //   ⚠️ 如果你在函数里写 nums.push(...) 或 nums.sort()，会编译报错——这正是 readonly 的保护。
 // ------------------------------------------------------------
 function sumReadOnly(nums: readonly number[]): number {
-  return 0; // TODO: 用 reduce 求和
+  return nums.reduce((acc, cur) => acc + cur, 0); // TODO: 用 reduce 求和
 }
 
 // ------------------------------------------------------------
@@ -42,7 +42,7 @@ function sumReadOnly(nums: readonly number[]): number {
 //   提示：可以用 Math.min(...nums) 和 Math.max(...nums)。
 // ------------------------------------------------------------
 function minMax(nums: number[]): [number, number] {
-  return [0, 0]; // TODO
+  return [Math.min(...nums), Math.max(...nums)]; // TODO
 }
 
 // ------------------------------------------------------------
@@ -54,7 +54,9 @@ interface Member {
   age: number;
 }
 function adultNames(members: Member[]): string[] {
-  return []; // TODO
+  return members
+    .filter(member => member.age >= 18)
+    .map(member => member.name.toUpperCase()); // TODO
 }
 
 // ============================================================

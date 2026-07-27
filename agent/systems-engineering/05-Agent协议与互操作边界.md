@@ -93,7 +93,7 @@ MCP 标准化连接，不会自动使连接安全。工具效果、租户隔离�
 
 ## 4. A2A 1.0：独立 Agent 系统之间的任务协议
 
-截至 2026-07，A2A 最新发布版为 1.0.0，项目称其为首个稳定、生产就绪版本。
+截至 2026-07-26，A2A 最新发布版为 1.0.1（2026-05-28，1.0 补丁线）；项目称 1.0 为首个稳定、生产就绪版本。
 
 ### 4.1 主要对象
 
@@ -300,6 +300,7 @@ OTel 让不同 runtime 的 trace 可互通，但它不定义评测分数、业�
 - [A2A Protocol 1.0 Specification](https://a2a-protocol.org/latest/specification/)
 - [A2A：Announcing 1.0](https://a2a-protocol.org/latest/announcing-1.0/)
 - [Agent Skills Specification](https://agentskills.io/specification)
+- [Anthropic：Equipping agents for the real world with Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
 - [Linux Foundation：Agentic AI Foundation 成立](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)
 - [OpenTelemetry：GenAI Attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 

@@ -31,7 +31,7 @@ interface Account {
 }
 
 function getCity(user: Account): string | undefined {
-  return undefined; // TODO: 用 user.profile?.address?.city
+  return user?.profile?.address?.city; // TODO: 用 user.profile?.address?.city
 }
 
 // ------------------------------------------------------------
@@ -43,7 +43,7 @@ function withDefault(
   value: string | number | null | undefined,
   fallback: string,
 ): string | number {
-  return ''; // TODO: 用 value ?? fallback
+  return value ?? fallback; // TODO: 用 value ?? fallback
 }
 
 // ------------------------------------------------------------
@@ -56,7 +56,7 @@ interface ServerConfig {
   port?: number;
 }
 function portNumber(config: ServerConfig): number {
-  return 0; // TODO: 用 config.port!
+  return config.port!; // TODO: 用 config.port!
 }
 
 // ------------------------------------------------------------
@@ -65,7 +65,7 @@ function portNumber(config: ServerConfig): number {
 //   要求：取第一个元素，若为空（空数组）则返回 0。
 // ------------------------------------------------------------
 function firstOrZero(arr: number[]): number {
-  return 0; // TODO: 取 arr[0]，用 ?? 处理 undefined
+  return arr[0] ?? 0; // TODO: 取 arr[0]，用 ?? 处理 undefined
 }
 
 // ============================================================

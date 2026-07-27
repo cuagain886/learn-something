@@ -125,6 +125,17 @@ Client ─ notifications/initialized ──────────────�
 
 生产连接表至少记录：`server_identity`、`protocol_version`、`negotiated_capabilities`、`auth_subject/audience/scopes`、`tool_catalog_hash`、`connected_at`。
 
+### 5.1.1 Draft 方向预警（2026-07-26 快照；未发布，以正式版为准）
+
+官方仓库的 draft changelog 显示，2025-11-25 之后的下一版正在做方向性重构。学习时以 2025-11-25 为准，但升级规划要知道这些信号：
+
+- **拟改为无状态协议**：移除 `initialize`/`notifications/initialized` 握手与协议级 session（`Mcp-Session-Id`）；每个请求在 `_meta` 里携带协议版本与 client 能力，不匹配返回 `UnsupportedProtocolVersionError`；新增 `server/discover` 供 client 预先探测版本/能力/身份（SEP-2567、SEP-2575）。
+- **Tasks 拟迁出核心为官方扩展** `io.modelcontextprotocol/tasks`，重设计为 `tasks/get` 轮询 + `tasks/update` 输入、取消 `tasks/list`（SEP-2663）——“Tasks 走向什么生命周期”的当前答案是**扩展化**而非核心化。
+- **服务端发起的请求拟由 MRTR 取代**：`sampling/createMessage`、`elicitation/create`、`roots/list` 不再是 server 主动请求，而是 server 返回 `input_required` 结果、client 带补充输入重试原请求（SEP-2322）。
+- **拟移除 SSE 断流重续**（`Last-Event-ID`）：断流的在途请求作废，client 必须以新 request ID 重发——对有副作用的工具，这让幂等键与“结果未知”对账变成协议层面的硬需求（SEP-2575）。
+
+这些变化不推翻本章的工程结论，反而强化它们：锁定协议版本、为能力协商写显式失败路径、把断流当 `UNCERTAIN_OUTCOME` 处理。
+
 ---
 
 ## 6. 怎么用（学习路径）
@@ -202,4 +213,4 @@ MCP 让 Agent 能连接大量外部能力，安全面随之放大。核心原则
 
 > 下一步：[02-上下文工程基础](02-上下文工程基础.md) —— 理解 Agent 可靠性的头号命门。
 >
-> 一手资料：[MCP 2025-11-25 Specification](https://modelcontextprotocol.io/specification/2025-11-25) · [Lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle) · [Sampling](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling) · [Elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) · [Authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) · [Security Best Practices](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices)
+> 一手资料：[MCP 2025-11-25 Specification](https://modelcontextprotocol.io/specification/2025-11-25) · [Lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle) · [Sampling](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling) · [Elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) · [Authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) · [Security Best Practices](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices) · [Draft Changelog（未发布方向）](https://modelcontextprotocol.io/specification/draft/changelog)

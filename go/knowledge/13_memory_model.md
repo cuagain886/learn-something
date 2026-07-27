@@ -60,18 +60,18 @@ Race Detector 能证明“这次执行发现了竞态”，不能证明“没报
 
 ## 3. 高频同步规则表
 
-| 操作 | 内存模型保证 |
-|---|---|
-| 包初始化 | 被导入包的 `init` 完成先于导入方初始化；全部 `init` 完成先于 `main` |
-| `go f()` | `go` 语句先于新 goroutine 开始执行 |
-| goroutine 退出 | 退出本身不保证先于任何其他事件，必须显式等待 |
-| channel send/receive | send 先于对应 receive 完成 |
-| channel close | close 先于因关闭而返回零值的 receive |
-| 无缓冲 channel | receive 先于对应 send 完成，因此可以双向建立阶段边界 |
-| 容量 C 的 channel | 第 k 次 receive 先于第 k+C 次 send 完成 |
-| Mutex/RWMutex | 第 n 次 Unlock 先于后续第 m 次 Lock 返回（n < m） |
-| Once | `Do(f)` 中 f 完成先于所有 `Do(f)` 返回 |
-| atomic | 可观察到 A 效果的 B 与 A 建立同步；所有 atomic 表现为某个顺序一致总序 |
+| 操作                   | 内存模型保证                                        |
+| -------------------- | --------------------------------------------- |
+| 包初始化                 | 被导入包的 `init` 完成先于导入方初始化；全部 `init` 完成先于 `main` |
+| `go f()`             | `go` 语句先于新 goroutine 开始执行                     |
+| goroutine 退出         | 退出本身不保证先于任何其他事件，必须显式等待                        |
+| channel send/receive | send 先于对应 receive 完成                          |
+| channel close        | close 先于因关闭而返回零值的 receive                     |
+| 无缓冲 channel          | receive 先于对应 send 完成，因此可以双向建立阶段边界             |
+| 容量 C 的 channel       | 第 k 次 receive 先于第 k+C 次 send 完成               |
+| Mutex/RWMutex        | 第 n 次 Unlock 先于后续第 m 次 Lock 返回（n < m）         |
+| Once                 | `Do(f)` 中 f 完成先于所有 `Do(f)` 返回                 |
+| atomic               | 可观察到 A 效果的 B 与 A 建立同步；所有 atomic 表现为某个顺序一致总序   |
 
 最容易答错的是 goroutine 退出：
 
@@ -89,6 +89,83 @@ fmt.Println(value) // 没有等待，没有可见性保证，而且存在数据�
 读多写少配置有两种常见实现。
 
 ### 4.1 RWMutex
+底层
+```go
+type RWMutex struct {
+    w           Mutex        // 互斥锁：用于排他性地限制“多个写操作”之间的竞争
+    writerSem   uint32       // 写者信号量：写协程等待“读协程全部退出”的休眠/唤醒通道
+    readerSem   uint32       // 读者信号量：读协程等待“写协程释放锁”的休眠/唤醒通道
+    readerCount atomic.Int32 // 关键！记录当前活跃的 Reader 数量，以及“是否有 Writer 在等待”
+    readerWait  atomic.Int32 // 记录 Writer 进来时，前面还有多少个 Reader 还没离开
+}
+```
+
+## 核心魔法：`readerCount` 的“反转技巧”
+
+为了实现**防写者饿死**（当有 Writer 等待时，阻塞后续新进来的 Reader），Go 引入了一个巧妙的常量：
+
+$$\text{rwmutexMaxReaders} = 1 \ll 30 \quad (\approx 10.7 亿)$$
+
+当没有 Writer 竞争时，`readerCount` 就是一个正常的正整数（1, 2, 3...）。
+
+一旦有 **Writer 试图加锁**，Go 会做一件神奇的事：**把 `readerCount` 减去 $\text{rwmutexMaxReaders}$**，让它直接变成一个**负数**！
+
+这使得 `readerCount` 具备了**双重含义**：
+
+1. **正数**：表示当前读锁的数量。
+    
+2. **负数**：表示**现在有 Writer 在等锁或拿着锁**！但只要加上 $\text{rwmutexMaxReaders}$，依然能还原出真实的 Reader 数量。
+
+### `RLock()` (申请读锁)
+
+1. **原子递增**：将 `readerCount` 加 1。
+    
+2. **检查结果**：
+    
+    - 如果加 1 后结果**仍是正数**：说明没有 Writer，加锁极快（仅一个 CAS 接口），直接返回。
+        
+    - 如果加 1 后结果**是负数**：说明当前有 Writer 在等待，新来的 Reader 不能进去！调用 `runtime_SemacquireMutex` 挂起自身，在 `readerSem` 信号量上排队休眠。
+        
+
+### `RUnlock()` (释放读锁)
+
+1. **原子递减**：将 `readerCount` 减 1。
+    
+2. **检查结果**：
+    
+    - 如果减 1 后结果**大于等于 0**：说明没有 Writer，直接走完流程。
+        
+    - 如果减 1 后结果**小于 0**：说明有 Writer 在等着！
+        
+        - 将 `readerWait` 减 1。
+            
+        - 如果 `readerWait == 0`：说明自己是**最后一个**阻碍 Writer 的读协程！触发 `writerSem` 信号量，**唤醒正在休眠等待的 Writer**。
+            
+
+### `Lock()` (申请写锁)
+
+1. **写写互斥**：先调用内部 `w.Lock()`。如果有其他 Writer，直接在这一步被锁住。
+    
+2. **阻断后续 Reader**：将 `readerCount` 减去 $\text{rwmutexMaxReaders}$（变成负数）。从这一刻起，后续所有新来的 `RLock()` 都会因为看到负数而休眠。
+    
+3. **等待前面的 Reader 离开**：
+    
+    - 计算当前还有多少个 Reader 没离开，把这个值存入 `readerWait`。
+        
+    - 如果 `readerWait != 0`，说明前面还有 Reader 没走完，Writer 调用 `writerSem` 阻塞休眠。
+        
+
+### `Unlock()` (释放写锁)
+
+1. **恢复 `readerCount`**：给 `readerCount` 加回 $\text{rwmutexMaxReaders}$，使其恢复为正数（宣告写操作结束）。
+    
+2. **唤醒所有积压的 Reader**：如果刚才有 Reader 进不来被挂起了，循环调用 `readerSem` 信号量将它们**全部唤醒**。
+    
+3. **释放内部互斥锁**：调用 `w.Unlock()`，允许下一个 Writer 进场。
+
+两个信号量：
+在go的运行时维护了一张全局的哈希表——**`semtable`（信号量哈希表）**：
+当出现竞争时，会对两个信号量取地址并hash，得到一个槽位，里面存了一棵树，然后把协程挂载到上面。
 
 优点：
 

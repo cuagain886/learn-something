@@ -256,6 +256,15 @@ CREATED
 
 框架解决机制，应用定义语义。
 
+### 6.1 Harness 的假设有保质期
+
+Harness 里很多设计本质是在补偿“当前模型做不到的事”：强制计划模板、每步反思、把任务切碎的 initializer、防过早收工的检查。Anthropic 的 Managed Agents 工程复盘（2026-04）点明了一个容易被忽略的事实：**harness 把“模型自己不能做什么”的假设编码了下来，而模型升级会让这些假设过期**——为旧模型“过早宣布完成”加的补偿逻辑，换新模型后可能变成多余约束甚至负收益。
+
+工程对策：
+
+- 把对外接口（run API、任务/产物 schema、审批与预算语义）与 harness 内部策略（prompt 结构、反思频率、拆分粒度）分开版本化：前者保持稳定，后者允许随模型快速重构。
+- 每次模型升级重跑 harness 消融：逐项停用补偿机制，用同预算 paired eval 判断它仍是收益还是已经变成税。
+
 ---
 
 ## 7. 三种常见错误架构
@@ -339,6 +348,8 @@ Observability:
 ## 11. 参考资料
 
 - [Anthropic：Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+- [Anthropic：Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps)（2026-03，前端质量与长程自主开发的 harness 迭代）
+- [Anthropic：Scaling Managed Agents — Decoupling the brain from the hands](https://www.anthropic.com/engineering/managed-agents)（2026-04，harness 假设随模型升级过期，接口与内部策略分离）
 - [Anthropic：Effective Context Engineering for AI Agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
 - [OpenAI Agents SDK：Overview](https://openai.github.io/openai-agents-python/)
 - [OpenAI Agents SDK：Running Agents / Durable Integrations](https://openai.github.io/openai-agents-python/running_agents/)

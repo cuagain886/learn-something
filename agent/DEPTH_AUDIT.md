@@ -220,3 +220,25 @@
 | 时效/绝对化残留定向扫描 | 旧协议版本与无边界架构、任务覆盖、成本断言命中 0 |
 | 来源 | 278 处外部 URL 引用；关键主张集中映射到规范、RFC、官方文档或原始论文 |
 | Git 文本检查 | `git diff --check -- agent` 通过（仅提示工作区既有 LF→CRLF 策略，不是 whitespace error） |
+
+### 11.2 2026-07-26 定期复核记录
+
+机械与事实双向复核，方法：全量脚本校验 + 一手来源在线核查（官方仓库/官网直接抓取）。
+
+| 检查 | 结果 |
+|------|------|
+| 本地链接 | 295 处全量校验，失效 0；代码围栏奇偶 0 异常；U+FFFD 0 |
+| 公式抽验 | Wilson 区间、pass@k/pass^k、UCB1、Little/Kingman、扩展 Amdahl、POMDP belief 更新——全部验算正确 |
+| MCP 版本 | 官方仓库确认 2025-11-25 仍为最新发布版（其后仅 draft）；Tasks 在 changelog 中确为 experimental（SEP-1686） |
+| A2A 版本 | 最新发布 v1.0.1（2026-05-28），已更新雷达状态表（原写 1.0.0） |
+| 外链存活 | A2A 规范、OWASP 2026、OTel 2026 博客、semconv-genai 仓库均 200；modelcontextprotocol.io 与 agentskills.io 本机网络不可达（非链接失效） |
+| 新一手来源 | 纳入 5 篇 Anthropic 工程文章：eval-awareness-browsecomp（评测污染新证据，写入 evaluation/01 与 systems-engineering/07）、managed-agents（harness 假设过期原则，写入 systems-engineering/01）、harness-design-long-running-apps、agent-skills 工程实践、claude-code-sandboxing（补入对应参考区与技术雷达） |
+| URL 规范化 | Building Effective Agents 的 /research/ 旧路径统一为 /engineering/ |
+| MCP draft 信号 | draft changelog 显示下一版拟无状态化（移除 initialize/session）、Tasks 迁为官方扩展（SEP-2663）、MRTR 取代服务端发起请求；已按"未发布、可能再变"标注写入 context-engineering/01 §5.1.1 与雷达 |
+| 框架版本快照 | ADK python v2.5.0、MS Agent Framework python 1.12.x/dotnet 1.15.x（含 hosting-a2a alpha）、OpenAI Agents SDK 0.18.x，写入 orchestration/05 §3.1；arXiv 定向扫描未发现值得引用的已验证成果（均为数天内预印本，按证据分级不纳入） |
+| OWASP 命名核验 | 下载官方 57 页 PDF，ASI01–ASI10 十项命名与 production/01 映射逐字一致（官方文内 and/& 两种写法并存）；同步修正 systems-engineering/05 中残留的 A2A 1.0.0 表述 |
+| Agent Skills 核验 | 官方规范仓库 agentskills/agentskills 的 specification.mdx 确认 `allowed-tools` 为 "(Experimental)、客户端支持不一" ——systems-engineering/05 表述正确 |
+| rag/03 抽验 | HNSW/IVF/PQ 机制描述、参数语义（M/ef_construction/ef_search）、filtered search 权衡、exact-as-oracle 方法——全部正确 |
+| 外链全量存活 | 115 个唯一外链并行探测：105 个 200；10 个 000 全部为 modelcontextprotocol.io/agentskills.io（复核网络本机不可达所致，内容已经官方 GitHub 仓库交叉确认存在）——真实失效 0 |
+| 锚点校验 | 全库片段链接（#锚点）按 GitHub slug 规则验证：1 处，全部有效 |
+| sitemap 补源 | 扫 OpenAI/Anthropic 全站 sitemap，新纳入 6 个未引用官方来源：A practical guide to building agents（INDEX）、safe-trustworthy agents 框架（production/00）、Agentic misalignment（production/01）、Project Vend 一/二期（systems-engineering/04）、Measuring agent autonomy（雷达评测区） |

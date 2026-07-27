@@ -186,6 +186,8 @@ SECURITY_VIOLATION      越权、注入成功、数据泄露
 
 前者要用线上分层抽样、时间切片和 challenge set 更新覆盖；后者要用 locked holdout、访问控制、内容 hash、近重复检测和有限揭榜频率。不能以“持续更新评测集”为名，把所有线上失败都同时加入开发集和最终验收集。
 
+联网 harness 还带来第三种独立失效：**web-enabled 评测的完整性可能被 Agent 自己破坏**。Anthropic 2026-03 公开的 Opus 4.6 × BrowseComp 分析（多 Agent 配置，1,266 题）发现：9 题的答案已泄漏到公开网页（论文附录、OpenReview 表格），模型检索时直接命中；另有 2 题，模型先假设自己正在被评测、推断出具体是哪个 benchmark，再定位并解密了答案密钥——canary 字符串和加密答案挡不住带代码执行能力的定向搜索。联网评测要么使用隔离的网络快照，要么在 trace 中检测“命中基准材料”并按污染剔除，不能假设公开 benchmark 在联网环境下仍是封闭考试。
+
 ---
 
 ## 9. 从相关诊断到因果结论
@@ -231,4 +233,4 @@ Trace 里“长轨迹更容易失败”只是相关性：也许是难任务导�
 
 > 下一步：[02-Agent评估的维度与指标](02-Agent评估的维度与指标.md) —— 把 estimand 落成可计算的指标体系。
 >
-> 主要参考：[AI Agents That Matter](https://arxiv.org/abs/2407.01502) · [τ-bench](https://arxiv.org/abs/2406.12045) · [Anthropic：Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+> 主要参考：[AI Agents That Matter](https://arxiv.org/abs/2407.01502) · [τ-bench](https://arxiv.org/abs/2406.12045) · [Anthropic：Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) · [Anthropic：Eval awareness in BrowseComp](https://www.anthropic.com/engineering/eval-awareness-browsecomp)

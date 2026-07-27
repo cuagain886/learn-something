@@ -24,10 +24,12 @@ class Point {
   x: number;
   y: number;
   constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
     // TODO: 给 this.x、this.y 赋值
   }
   distanceTo(other: Point): number {
-    return 0; // TODO: 返回 √((x-other.x)² + (y-other.y)²)，可用 Math.hypot
+    return Math.hypot(this.x - other.x, this.y - other.y); // TODO: 返回 Math.hypot
   }
 }
 

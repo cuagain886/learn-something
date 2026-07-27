@@ -26,44 +26,44 @@ type Expect<T extends true> = T;
 //   提示：const count = 10 —— 10 这个值永远不变，所以类型是…？
 // ------------------------------------------------------------
 const count = 10;
-type _q1 = Expect<Equal<typeof count, unknown>>;
+type _q1 = Expect<Equal<typeof count, 10>>;
 
 // 第 2 题：换成 let，值以后可能变，类型会被「拓宽」。
 let count2 = 10;
-type _q2 = Expect<Equal<typeof count2, unknown>>;
+type _q2 = Expect<Equal<typeof count2, number>>;
 
 // 第 3、4 题：字符串同理。
 const word = 'hi';
-type _q3 = Expect<Equal<typeof word, unknown>>;
+type _q3 = Expect<Equal<typeof word, 'hi'>>;
 
 let word2 = 'hi';
-type _q4 = Expect<Equal<typeof word2, unknown>>;
+type _q4 = Expect<Equal<typeof word2, string>>;
 
 // ------------------------------------------------------------
 // 第 5 题：数组元素会被拓宽成「元素类型的数组」，而不是元组。
 //   提示：[1, 2, 3] 以后还能 push，所以长度不限 → 类型是？
 // ------------------------------------------------------------
 const arr = [1, 2, 3];
-type _q5 = Expect<Equal<typeof arr, unknown>>;
+type _q5 = Expect<Equal<typeof arr, number[]>>;
 
 // 第 6 题：异构数组 → 元素类型取联合。
 const mixed = [1, 'a', true];
-type _q6 = Expect<Equal<typeof mixed, unknown>>;
+type _q6 = Expect<Equal<typeof mixed, (number | string | boolean)[]>>;
 
 // ------------------------------------------------------------
 // 第 7 题：对象字面量的【属性】会被拓宽（即使外层是 const）。
 //   提示：obj.x 以后还能被赋值成别的数字，所以 x 的类型是？
 // ------------------------------------------------------------
 const obj = { x: 1, name: 'Alice' };
-type _q7 = Expect<Equal<typeof obj, unknown>>;
+type _q7 = Expect<Equal<typeof obj, { x: number; name: string }>>;
 
 // 第 8 题：`as const` 把整个对象「冻结」成只读字面量。
 const frozen = { x: 1 } as const;
-type _q8 = Expect<Equal<typeof frozen, unknown>>;
+type _q8 = Expect<Equal<typeof frozen, { readonly x: 1 }>>;
 
 // 第 9 题：`as const` 作用在数组上 → 得到只读元组（不再是数组）。
 const tuple = [1, 'a'] as const;
-type _q9 = Expect<Equal<typeof tuple, unknown>>;
+type _q9 = Expect<Equal<typeof tuple, readonly[1, 'a']>>;
 
 // ------------------------------------------------------------
 // 第 10 题：函数返回类型也会推断，但字面量会拓宽。
@@ -73,7 +73,7 @@ type _q9 = Expect<Equal<typeof tuple, unknown>>;
 function double(n: number) {
   return n * 2;
 }
-type _q10 = Expect<Equal<ReturnType<typeof double>, unknown>>;
+type _q10 = Expect<Equal<ReturnType<typeof double>, number>>;
 
 // 做完后：运行 `npm run check`，所有 _qN 行不报错即完成。
 // 对照答案：见同目录 solution.ts
